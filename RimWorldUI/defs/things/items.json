@@ -1,0 +1,16 @@
+[
+  {"defType": "ThingDef", "defName": "Steel", "label": "Steel", "category": "Resource", "maxStack": 75, "marketValue": 1.9},
+  {"defType": "ThingDef", "defName": "Wood", "label": "Wood", "category": "Resource", "maxStack": 75, "marketValue": 1.2},
+  {"defType": "ThingDef", "defName": "Stone", "label": "Stone blocks", "category": "Resource", "maxStack": 75, "marketValue": 1.0},
+  {"defType": "ThingDef", "defName": "Silver", "label": "Silver", "category": "Resource", "maxStack": 500, "marketValue": 1.0},
+  {"defType": "ThingDef", "defName": "Gold", "label": "Gold", "category": "Resource", "maxStack": 500, "marketValue": 10.0},
+  {"defType": "ThingDef", "defName": "Components", "label": "Components", "category": "Resource", "maxStack": 25, "marketValue": 32.0},
+  {"defType": "ThingDef", "defName": "AdvancedComponents", "label": "Advanced Components", "category": "Resource", "maxStack": 10, "marketValue": 200.0},
+  {"defType": "ThingDef", "defName": "Medicine", "label": "Medicine", "category": "Medical", "maxStack": 25, "marketValue": 18.0, "medPotency": 1.0},
+  {"defType": "ThingDef", "defName": "HerbalMedicine", "label": "Herbal Medicine", "category": "Medical", "maxStack": 25, "marketValue": 10.0, "medPotency": 0.6},
+  {"defType": "ThingDef", "defName": "RawFood", "label": "Raw Food", "category": "Food", "maxStack": 75, "marketValue": 1.1, "nutrition": 0.05},
+  {"defType": "ThingDef", "defName": "MealSimple", "label": "Simple Meal", "category": "Food", "maxStack": 10, "marketValue": 15.0, "nutrition": 0.9},
+  {"defType": "ThingDef", "defName": "MealFine", "label": "Fine Meal", "category": "Food", "maxStack": 10, "marketValue": 25.0, "nutrition": 1.0},
+  {"defType": "ThingDef", "defName": "Cloth", "label": "Cloth", "category": "Resource", "maxStack": 75, "marketValue": 2.7},
+  {"defType": "ThingDef", "defName": "Leather", "label": "Leather", "category": "Resource", "maxStack": 75, "marketValue": 2.1}
+]

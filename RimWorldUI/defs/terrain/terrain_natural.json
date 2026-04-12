@@ -1,0 +1,104 @@
+[
+  {
+    "defType": "TerrainDef",
+    "defName": "Soil",
+    "label": "Soil",
+    "fertility": 1.0,
+    "moveCost": 2,
+    "color": [0.45, 0.35, 0.2],
+    "affordances": ["Light", "Medium", "GrowSoil"],
+    "order": 10
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "SoilRich",
+    "label": "Rich Soil",
+    "fertility": 1.4,
+    "moveCost": 2,
+    "color": [0.35, 0.28, 0.15],
+    "affordances": ["Light", "Medium", "GrowSoil"],
+    "order": 11
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "Sand",
+    "label": "Sand",
+    "fertility": 0.0,
+    "moveCost": 2,
+    "color": [0.78, 0.72, 0.5],
+    "affordances": ["Light"],
+    "order": 20
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "Gravel",
+    "label": "Gravel",
+    "fertility": 0.7,
+    "moveCost": 2,
+    "color": [0.55, 0.5, 0.42],
+    "affordances": ["Light", "Medium"],
+    "order": 21
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "MarshyTerrain",
+    "label": "Marshy Terrain",
+    "fertility": 1.0,
+    "moveCost": 4,
+    "color": [0.3, 0.38, 0.2],
+    "affordances": ["Light"],
+    "order": 30
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "Mud",
+    "label": "Mud",
+    "fertility": 0.0,
+    "moveCost": 3,
+    "color": [0.4, 0.32, 0.18],
+    "affordances": ["Light"],
+    "order": 31
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "Ice",
+    "label": "Ice",
+    "fertility": 0.0,
+    "moveCost": 3,
+    "color": [0.82, 0.88, 0.95],
+    "affordances": ["Light"],
+    "order": 40
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "WaterShallow",
+    "label": "Shallow Water",
+    "fertility": 0.0,
+    "moveCost": 8,
+    "passable": true,
+    "color": [0.25, 0.4, 0.6],
+    "affordances": [],
+    "order": 50
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "WaterDeep",
+    "label": "Deep Water",
+    "fertility": 0.0,
+    "moveCost": -1,
+    "passable": false,
+    "color": [0.15, 0.25, 0.45],
+    "affordances": [],
+    "order": 51
+  },
+  {
+    "defType": "TerrainDef",
+    "defName": "RoughStone",
+    "label": "Rough Stone",
+    "fertility": 0.0,
+    "moveCost": 2,
+    "color": [0.5, 0.48, 0.45],
+    "affordances": ["Light", "Medium", "Heavy"],
+    "order": 60
+  }
+]

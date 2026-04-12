@@ -1,0 +1,36 @@
+# === Godot ===
+.godot/
+*.import
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# === OS generated ===
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# === Editor / IDE ===
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# === Project-specific ===
+# 每台电脑的 RimWorld 安装路径不同，勿提交
+.cursor/rules/RimWorld.path.local.mdc
+
+# === Screenshots & logs ===
+screenshot*.png
+ss_*.png
+*.log
+mem_monitor.log
+debug_ss.py
+
+# === Cursor internals ===
+.cursor/

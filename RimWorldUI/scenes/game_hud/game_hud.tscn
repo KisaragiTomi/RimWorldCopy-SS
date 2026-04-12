@@ -1,0 +1,127 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scenes/game_hud/game_hud.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/game_hud/colonist_bar.gd" id="2"]
+[ext_resource type="Script" path="res://scenes/game_hud/resource_readout.gd" id="3"]
+[ext_resource type="Script" path="res://scenes/game_hud/global_controls.gd" id="4"]
+[ext_resource type="Script" path="res://scenes/game_hud/bottom_tabs.gd" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/architect/architect_menu.tscn" id="6"]
+[ext_resource type="Script" path="res://scenes/colonist_tabs/inspect_panel.gd" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/research/research_tree.tscn" id="8"]
+[ext_resource type="Script" path="res://scenes/game_hud/work_restrict_panels.gd" id="9"]
+[ext_resource type="Script" path="res://scenes/game_hud/alerts_panel.gd" id="10"]
+[ext_resource type="Script" path="res://scenes/game_hud/misc_tabs_panels.gd" id="11"]
+[ext_resource type="Script" path="res://scenes/game_hud/ingame_menu.gd" id="12"]
+
+[node name="GameHUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="ColonistBar" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 86.0
+grow_horizontal = 2
+script = ExtResource("2")
+
+[node name="ResourceReadout" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 90.0
+offset_right = 220.0
+offset_bottom = 500.0
+script = ExtResource("3")
+
+[node name="GlobalControls" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 120.0
+grow_horizontal = 0
+script = ExtResource("4")
+
+[node name="AlertsPanel" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 130.0
+offset_right = 0.0
+offset_bottom = 450.0
+grow_horizontal = 0
+script = ExtResource("10")
+
+[node name="BottomTabs" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("5")
+
+[node name="ArchitectMenu" parent="." instance=ExtResource("6")]
+offset_top = -340.0
+offset_bottom = -40.0
+
+[node name="WorkRestrictPanels" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -300.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("9")
+
+[node name="InspectPanel" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -300.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("7")
+
+[node name="ResearchTree" parent="." instance=ExtResource("8")]
+
+[node name="MiscTabPanels" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -300.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("11")
+
+[node name="IngameMenu" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("12")

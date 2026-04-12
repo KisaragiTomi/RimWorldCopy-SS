@@ -1,0 +1,74 @@
+[
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Stonecutting",
+    "label": "Stonecutting",
+    "description": "Cut raw stone into usable blocks.",
+    "baseCost": 400,
+    "prerequisites": [],
+    "unlocks": ["StonecuttersTable"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Smithing",
+    "label": "Smithing",
+    "description": "Forge metal weapons and tools.",
+    "baseCost": 700,
+    "prerequisites": [],
+    "unlocks": ["Smithy"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Electricity",
+    "label": "Electricity",
+    "description": "Harness electrical power.",
+    "baseCost": 1200,
+    "prerequisites": [],
+    "unlocks": ["WoodFiredGenerator", "PowerConduit"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Batteries",
+    "label": "Batteries",
+    "description": "Store electricity in batteries.",
+    "baseCost": 800,
+    "prerequisites": ["Electricity"],
+    "unlocks": ["Battery"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Machining",
+    "label": "Machining",
+    "description": "Build a machining table to produce components.",
+    "baseCost": 1500,
+    "prerequisites": ["Smithing", "Electricity"],
+    "unlocks": ["MachiningTable"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "MedicineProduction",
+    "label": "Medicine Production",
+    "description": "Produce medicine from herbal ingredients.",
+    "baseCost": 500,
+    "prerequisites": [],
+    "unlocks": ["DrugLab"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Microelectronics",
+    "label": "Microelectronics",
+    "description": "Build advanced electronic devices.",
+    "baseCost": 3000,
+    "prerequisites": ["Electricity", "Machining"],
+    "unlocks": ["HiTechResearchBench", "CommsConsole"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "GunTurrets",
+    "label": "Gun Turrets",
+    "description": "Build automated gun turrets for defense.",
+    "baseCost": 1000,
+    "prerequisites": ["Electricity"],
+    "unlocks": ["MiniTurret"]
+  }
+]

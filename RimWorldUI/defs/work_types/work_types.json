@@ -1,0 +1,143 @@
+[
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Firefighter",
+    "label": "Firefighting",
+    "order": 10,
+    "alwaysEnabled": true,
+    "description": "Extinguish fires."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Patient",
+    "label": "Patient",
+    "order": 20,
+    "alwaysEnabled": true,
+    "description": "Lie in bed to be tended."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Doctor",
+    "label": "Doctor",
+    "order": 30,
+    "skillNeeded": "Medicine",
+    "description": "Tend wounded and administer medicine."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "PatientBedRest",
+    "label": "Bed Rest",
+    "order": 40,
+    "alwaysEnabled": true,
+    "description": "Rest in bed until healed."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Warden",
+    "label": "Warden",
+    "order": 50,
+    "skillNeeded": "Social",
+    "description": "Chat with and recruit prisoners."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Handling",
+    "label": "Handle",
+    "order": 60,
+    "skillNeeded": "Animals",
+    "description": "Tame, train, and manage animals."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Cooking",
+    "label": "Cook",
+    "order": 70,
+    "skillNeeded": "Cooking",
+    "description": "Prepare meals at stoves and campfires."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Hunting",
+    "label": "Hunt",
+    "order": 80,
+    "skillNeeded": "Shooting",
+    "description": "Hunt designated animals."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Construction",
+    "label": "Construct",
+    "order": 90,
+    "skillNeeded": "Construction",
+    "description": "Build walls, furniture, and structures."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Growing",
+    "label": "Grow",
+    "order": 100,
+    "skillNeeded": "Plants",
+    "description": "Sow and harvest crops."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Mining",
+    "label": "Mine",
+    "order": 110,
+    "skillNeeded": "Mining",
+    "description": "Mine rock and minerals."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "PlantCutting",
+    "label": "Plant Cut",
+    "order": 120,
+    "description": "Cut designated plants."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Smithing",
+    "label": "Smith",
+    "order": 130,
+    "skillNeeded": "Crafting",
+    "description": "Forge weapons and armor at the smithy."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Tailoring",
+    "label": "Tailor",
+    "order": 140,
+    "skillNeeded": "Crafting",
+    "description": "Create apparel at the tailoring bench."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Crafting",
+    "label": "Craft",
+    "order": 150,
+    "skillNeeded": "Crafting",
+    "description": "Craft items at various workbenches."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Hauling",
+    "label": "Haul",
+    "order": 160,
+    "description": "Carry items to stockpiles."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Cleaning",
+    "label": "Clean",
+    "order": 170,
+    "description": "Clean floors in the home area."
+  },
+  {
+    "defType": "WorkTypeDef",
+    "defName": "Research",
+    "label": "Research",
+    "order": 180,
+    "skillNeeded": "Intellectual",
+    "description": "Research new technologies."
+  }
+]

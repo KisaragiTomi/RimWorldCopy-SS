@@ -1,0 +1,55 @@
+[
+  {
+    "defType": "FactionDef",
+    "defName": "PlayerColony",
+    "label": "Player Colony",
+    "isPlayer": true,
+    "techLevel": "Industrial",
+    "color": [0.2, 0.6, 1.0],
+    "permanentEnemy": false
+  },
+  {
+    "defType": "FactionDef",
+    "defName": "OutlanderCivil",
+    "label": "Outlander Union",
+    "isPlayer": false,
+    "techLevel": "Industrial",
+    "color": [0.3, 0.7, 0.3],
+    "permanentEnemy": false,
+    "startGoodwill": 0,
+    "naturalGoodwillMax": 100
+  },
+  {
+    "defType": "FactionDef",
+    "defName": "TribalRough",
+    "label": "Tribal Warriors",
+    "isPlayer": false,
+    "techLevel": "Neolithic",
+    "color": [0.7, 0.5, 0.2],
+    "permanentEnemy": false,
+    "startGoodwill": -30,
+    "naturalGoodwillMax": 50
+  },
+  {
+    "defType": "FactionDef",
+    "defName": "Pirate",
+    "label": "Pirate Band",
+    "isPlayer": false,
+    "techLevel": "Industrial",
+    "color": [0.8, 0.15, 0.15],
+    "permanentEnemy": true,
+    "startGoodwill": -100,
+    "naturalGoodwillMax": -100
+  },
+  {
+    "defType": "FactionDef",
+    "defName": "Empire",
+    "label": "Shattered Empire",
+    "isPlayer": false,
+    "techLevel": "Spacer",
+    "color": [0.6, 0.4, 0.8],
+    "permanentEnemy": false,
+    "startGoodwill": 20,
+    "naturalGoodwillMax": 100
+  }
+]
