@@ -63,7 +63,28 @@ static func load_map(filename: String) -> MapData:
 		return null
 	var map := MapData.from_dict(data["map"])
 	_restore_game_state(data.get("game_state", {}))
+	_restore_zones(data.get("zones", {}), map)
 	return map
+
+
+static func _restore_zones(zone_data: Dictionary, map: MapData) -> void:
+	if not ZoneManager:
+		return
+	ZoneManager.zones.clear()
+	for key: String in zone_data:
+		var parts := key.split(",")
+		if parts.size() != 2:
+			continue
+		var pos := Vector2i(int(parts[0]), int(parts[1]))
+		var zone_type: String = zone_data[key]
+		ZoneManager.zones[pos] = zone_type
+	for y: int in map.height:
+		for x: int in map.width:
+			var cell := map.get_cell(x, y)
+			if cell and cell.zone != "":
+				var pos := Vector2i(x, y)
+				if not ZoneManager.zones.has(pos):
+					ZoneManager.zones[pos] = cell.zone
 
 
 static func list_saves() -> PackedStringArray:

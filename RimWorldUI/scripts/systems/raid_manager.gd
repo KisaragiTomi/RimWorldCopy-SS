@@ -37,8 +37,13 @@ func spawn_raid(raider_count: int = 0) -> void:
 		return
 
 	if raider_count <= 0:
-		var colony_strength: int = PawnManager.pawns.size() if PawnManager else 3
-		raider_count = maxi(2, colony_strength / 2 + _rng.randi_range(0, 2))
+		var colony_strength: int = 3
+		if PawnManager:
+			colony_strength = 0
+			for p: Pawn in PawnManager.pawns:
+				if not p.has_meta("faction") or p.get_meta("faction") != "enemy":
+					colony_strength += 1
+		raider_count = clampi(colony_strength / 4 + _rng.randi_range(0, 3), 2, 30)
 
 	var edges := ["West", "East", "North", "South"]
 	var edge_label: String = edges[_rng.randi_range(0, edges.size() - 1)]

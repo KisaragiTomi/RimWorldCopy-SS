@@ -29,6 +29,10 @@ func remove_thing(thing: Thing) -> void:
 	thing_destroyed.emit(thing)
 
 
+func destroy_thing(thing: Thing) -> void:
+	remove_thing(thing)
+
+
 func get_things_at(pos: Vector2i) -> Array:
 	return _grid.get(_key(pos), [])
 

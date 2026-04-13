@@ -75,7 +75,11 @@ func _on_long_tick(_tick: int) -> void:
 	_last_day = current_day
 
 	var wealth := _calc_colony_wealth()
-	var pawn_count: int = PawnManager.pawns.size() if PawnManager else 0
+	var pawn_count: int = 0
+	if PawnManager:
+		for p: Pawn in PawnManager.pawns:
+			if not p.has_meta("faction") or p.get_meta("faction") != "enemy":
+				pawn_count += 1
 	var result := storyteller.should_fire_incident(wealth, pawn_count, current_day)
 	if result.is_empty():
 		return
@@ -87,7 +91,7 @@ func _on_long_tick(_tick: int) -> void:
 	match event_name:
 		"Raid":
 			if RaidManager:
-				var raider_count := maxi(2, roundi(result.get("points", 30.0) / 15.0))
+				var raider_count := clampi(roundi(result.get("points", 30.0) / 15.0), 2, 30)
 				RaidManager.spawn_raid(raider_count)
 				_record_incident("Raid", {"count": raider_count})
 		"TraderVisit":

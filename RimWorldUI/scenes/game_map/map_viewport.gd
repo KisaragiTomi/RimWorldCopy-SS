@@ -10,7 +10,6 @@ signal draft_move_issued(pawn_id: int, target: Vector2i)
 signal context_menu_requested(cell_pos: Vector2i, screen_pos: Vector2, options: Array)
 
 const CELL_SIZE := 16
-const EDGE_SCROLL_MARGIN := 4
 
 var map_data: MapData
 var _camera: Camera2D
@@ -983,24 +982,13 @@ func _process(delta: float) -> void:
 		ensure_pawn_sprites()
 		_ensure_animal_sprites()
 	var move := Vector2.ZERO
-	if Input.is_action_pressed("ui_left"):
+	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A):
 		move.x -= 1
-	if Input.is_action_pressed("ui_right"):
+	if Input.is_action_pressed("ui_right") or Input.is_key_pressed(KEY_D):
 		move.x += 1
-	if Input.is_action_pressed("ui_up"):
+	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W):
 		move.y -= 1
-	if Input.is_action_pressed("ui_down"):
-		move.y += 1
-
-	var vp_size := get_viewport_rect().size
-	var mouse := get_viewport().get_mouse_position()
-	if mouse.x <= EDGE_SCROLL_MARGIN:
-		move.x -= 1
-	elif mouse.x >= vp_size.x - EDGE_SCROLL_MARGIN:
-		move.x += 1
-	if mouse.y <= EDGE_SCROLL_MARGIN:
-		move.y -= 1
-	elif mouse.y >= vp_size.y - EDGE_SCROLL_MARGIN:
+	if Input.is_action_pressed("ui_down") or Input.is_key_pressed(KEY_S):
 		move.y += 1
 
 	if move != Vector2.ZERO:

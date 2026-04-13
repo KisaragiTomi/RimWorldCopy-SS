@@ -1,0 +1,40 @@
+wing: rimworldcopy
+rooms:
+- name: decompiled
+  description: Files from decompiled/
+  keywords:
+  - decompiled
+  - decompiled
+- name: rimworldcharacterwork
+  description: Files from RimWorldCharacterWork/
+  keywords:
+  - rimworldcharacterwork
+  - rimworldcharacterwork
+- name: rimworldlandscape
+  description: Files from RimWorldLandscape/
+  keywords:
+  - rimworldlandscape
+  - rimworldlandscape
+- name: rimworldui
+  description: Files from RimWorldUI/
+  keywords:
+  - rimworldui
+  - rimworldui
+- name: screenshots
+  description: Files from screenshots/
+  keywords:
+  - screenshots
+  - screenshots
+- name: design
+  description: Files from assets/
+  keywords:
+  - design
+  - assets
+- name: scripts
+  description: Files from scripts/
+  keywords:
+  - scripts
+  - scripts
+- name: general
+  description: Files that don't fit other rooms
+  keywords: []

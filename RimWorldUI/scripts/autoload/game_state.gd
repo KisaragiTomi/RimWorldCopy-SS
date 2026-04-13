@@ -169,10 +169,10 @@ func _building_wealth(b: Building) -> float:
 func _pawn_gear_wealth(p: Pawn) -> float:
 	var w: float = 0.0
 	if p.equipment:
-		if p.equipment.weapon != "":
+		if p.equipment.get_weapon() != "":
 			w += p.equipment.get_weapon_damage() * 8.0
-		w += p.equipment.sharp_armor * 200.0
-		w += p.equipment.blunt_armor * 150.0
+		w += p.equipment.get_armor_sharp() * 200.0
+		w += p.equipment.get_armor_blunt() * 150.0
 	if p.inventory:
 		for entry: Dictionary in p.inventory.items:
 			w += float(entry.get("count", 0)) * 1.0

@@ -11,6 +11,8 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 
 	if not ThingManager:
 		return {}
+	if not _has_stockpile():
+		return {}
 
 	var best_item: Thing = null
 	var best_dist: float = INF
@@ -34,6 +36,21 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	var j := Job.new("Haul", best_item.grid_pos)
 	j.target_thing_id = best_item.id
 	return {"job": j, "source": self}
+
+
+func _has_stockpile() -> bool:
+	if ZoneManager:
+		if not ZoneManager.get_zone_cells("Stockpile").is_empty():
+			return true
+	var map: MapData = GameState.get_map() if GameState else null
+	if map == null:
+		return false
+	for y: int in map.height:
+		for x: int in map.width:
+			var cell := map.get_cell(x, y)
+			if cell and cell.zone == "Stockpile":
+				return true
+	return false
 
 
 func _needs_hauling(item: Item) -> bool:

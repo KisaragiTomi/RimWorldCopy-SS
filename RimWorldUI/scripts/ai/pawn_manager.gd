@@ -193,28 +193,25 @@ func _tick_pawn(p: Pawn) -> void:
 
 
 func _try_start_job(p: Pawn) -> void:
-	var result := _think_tree.try_issue_job(p)
-	if result.is_empty():
-		_job_cooldowns[p.id] = current_tick_cached + JOB_RETRY_COOLDOWN
+	for node: ThinkNode in _think_tree.sub_nodes:
+		var result := node.try_issue_job(p)
+		if result.is_empty():
+			continue
+		var j: Job = result.get("job")
+		if j == null:
+			continue
+		var driver := _create_driver(j.job_def)
+		if driver == null:
+			continue
+		p.current_job_name = j.job_def
+		p.job_changed.emit(j.job_def)
+		driver.setup(p, j)
+		if driver.ended:
+			_drivers.erase(p.id)
+			continue
+		_drivers[p.id] = driver
 		return
-	var j: Job = result.get("job")
-	if j == null:
-		_job_cooldowns[p.id] = current_tick_cached + JOB_RETRY_COOLDOWN
-		return
-
-	var driver := _create_driver(j.job_def)
-	if driver == null:
-		_job_cooldowns[p.id] = current_tick_cached + JOB_RETRY_COOLDOWN
-		return
-
-	p.current_job_name = j.job_def
-	p.job_changed.emit(j.job_def)
-	driver.setup(p, j)
-	if driver.ended:
-		_drivers.erase(p.id)
-		_job_cooldowns[p.id] = current_tick_cached + JOB_RETRY_COOLDOWN
-		return
-	_drivers[p.id] = driver
+	_job_cooldowns[p.id] = current_tick_cached + JOB_RETRY_COOLDOWN
 
 
 func _tick_mental_pawn(p: Pawn) -> void:

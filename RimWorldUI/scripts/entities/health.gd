@@ -175,6 +175,13 @@ func _recalc() -> void:
 	_consciousness = clampf(1.0 - _pain_total, 0.0, 1.0)
 
 
+func has_hediff(hediff_name: String) -> bool:
+	for h: Dictionary in hediffs:
+		if h.get("damage_type", "") == hediff_name or h.get("type", "") == hediff_name:
+			return true
+	return false
+
+
 func is_bleeding() -> bool:
 	return _bleed_rate > 0.0
 
