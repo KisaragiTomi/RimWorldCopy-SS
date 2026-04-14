@@ -19,7 +19,7 @@ func _make_toils() -> Array[Dictionary]:
 		toils.append({
 			"name": "aim",
 			"complete_mode": "delay",
-			"delay_ticks": 60,
+			"delay_ticks": 20,
 		})
 		toils.append({
 			"name": "fire",
@@ -45,6 +45,21 @@ func _on_toil_init(toil_name: String) -> void:
 			_goto_target()
 		"strike":
 			_do_melee_attack()
+
+
+func _on_toil_tick(toil_name: String) -> void:
+	if toil_name == "goto_melee":
+		if _target == null or _target.dead or _target.downed:
+			end_job(false)
+			return
+		var dist := pawn.grid_pos.distance_to(_target.grid_pos) as float
+		if dist <= 1.5:
+			_advance_toil()
+			return
+		if not pawn.has_path() and _toil_ticks > 10:
+			_goto_target()
+		if _toil_ticks > 300:
+			end_job(false)
 
 
 func _find_target() -> Pawn:

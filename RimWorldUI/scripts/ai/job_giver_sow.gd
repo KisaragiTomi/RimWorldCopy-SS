@@ -13,6 +13,9 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	if not harvest_job.is_empty():
 		return harvest_job
 
+	if SeasonManager and not SeasonManager.is_growing_season():
+		return {}
+
 	var sow_job := _find_sow_spot(pawn)
 	return sow_job
 

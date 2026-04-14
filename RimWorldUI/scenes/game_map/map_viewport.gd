@@ -22,6 +22,9 @@ var _pawn_sprites: Dictionary = {}  # pawn_id -> Sprite2D
 var _pawn_target_pos: Dictionary = {}  # pawn_id -> Vector2 (world target)
 var _animal_sprites: Dictionary = {}  # animal_id -> Sprite2D
 var _animal_target_pos: Dictionary = {}
+var _building_sprites: Dictionary = {}  # thing_id -> Sprite2D
+var _building_textures: Dictionary = {}  # texture_key -> Texture2D
+var _wall_atlas_textures: Array[Texture2D] = []  # 16 connection tiles
 
 const MOVE_LERP_SPEED := 8.0
 
@@ -155,6 +158,7 @@ func generate_new_map(w: int, h: int, seed_val: int) -> void:
 	gen.generate()
 	if GameState:
 		GameState.active_map = map_data
+	_load_building_textures()
 	_render_map()
 	_render_zones()
 	_camera.position = Vector2(w * CELL_SIZE / 2.0, h * CELL_SIZE / 2.0)
@@ -163,14 +167,16 @@ func generate_new_map(w: int, h: int, seed_val: int) -> void:
 func _spawn_initial_pawns() -> void:
 	if map_data == null or not PawnManager:
 		return
+	if not PawnManager.pawns.is_empty():
+		return
 	var center := Vector2i(map_data.width / 2, map_data.height / 2)
 	var colonist_defs: Array[Dictionary] = [
-		{"name": "Engie", "age": 32, "skills": {"Construction": 12, "Shooting": 5, "Mining": 6}},
-		{"name": "Doc", "age": 45, "skills": {"Medicine": 14, "Shooting": 3, "Intellectual": 8}},
-		{"name": "Hawk", "age": 28, "skills": {"Shooting": 14, "Melee": 10, "Animals": 4}},
-		{"name": "Cook", "age": 38, "skills": {"Cooking": 12, "Plants": 8, "Medicine": 4}},
-		{"name": "Miner", "age": 35, "skills": {"Mining": 13, "Construction": 7, "Crafting": 5}},
-		{"name": "Crafter", "age": 41, "skills": {"Crafting": 14, "Construction": 6, "Intellectual": 6}},
+		{"name": "Engie", "age": 32, "skills": {"Construction": 12, "Shooting": 5, "Mining": 6}, "gear": {"Weapon": "Revolver", "BodyArmor": "FlakVest"}},
+		{"name": "Doc", "age": 45, "skills": {"Medicine": 14, "Shooting": 3, "Intellectual": 8}, "gear": {"Weapon": "Revolver", "BodyArmor": "FlakVest"}},
+		{"name": "Hawk", "age": 28, "skills": {"Shooting": 14, "Melee": 10, "Animals": 4}, "gear": {"Weapon": "Rifle", "BodyArmor": "FlakVest", "HeadArmor": "SimpleHelmet"}},
+		{"name": "Cook", "age": 38, "skills": {"Cooking": 12, "Plants": 8, "Medicine": 4}, "gear": {"Weapon": "Knife"}},
+		{"name": "Miner", "age": 35, "skills": {"Mining": 13, "Construction": 7, "Crafting": 5}, "gear": {"Weapon": "Revolver"}},
+		{"name": "Crafter", "age": 41, "skills": {"Crafting": 14, "Construction": 6, "Intellectual": 6}, "gear": {"Weapon": "Knife", "BodyArmor": "FlakVest"}},
 	]
 	for def: Dictionary in colonist_defs:
 		var p := Pawn.new()
@@ -181,6 +187,10 @@ func _spawn_initial_pawns() -> void:
 		var skills: Dictionary = def["skills"]
 		for skill_name: String in skills:
 			p.set_skill_level(skill_name, skills[skill_name])
+		if def.has("gear") and p.equipment:
+			var gear: Dictionary = def["gear"]
+			for slot: String in gear:
+				p.equipment.equip(slot, gear[slot])
 		PawnManager.add_pawn(p)
 		_create_pawn_sprite(p)
 		p.position_changed.connect(_on_pawn_moved.bind(p))
@@ -368,28 +378,60 @@ func _render_things() -> void:
 	if map_data == null or not ThingManager:
 		return
 	_thing_layer.clear()
+	for spr: Sprite2D in _building_sprites.values():
+		spr.queue_free()
+	_building_sprites.clear()
+
 	for thing: Thing in ThingManager.things:
 		if thing.state != Thing.ThingState.SPAWNED:
 			continue
 		var tx: int = thing.grid_pos.x
 		var ty: int = thing.grid_pos.y
-		if tx >= 0 and tx < map_data.width and ty >= 0 and ty < map_data.height:
-			var col: Color
-			var state_suffix := ""
-			if thing is Plant:
-				var plant := thing as Plant
-				col = Color(0.1, 0.3 + plant.growth * 0.5, 0.1)
-			elif thing is Item:
-				col = Color(0.8, 0.75, 0.3)
-			elif thing is Building:
-				col = thing.get_color()
-				state_suffix = "_%d" % (thing as Building).build_state
-			else:
-				col = thing.get_color()
-			var key := "thing_%d_%d%s" % [tx, ty, state_suffix]
-			if not _terrain_id_map.has(key):
-				_add_color_tile(col, key)
-			_thing_layer.set_cell(Vector2i(tx, ty), 0, _terrain_id_map[key])
+		if tx < 0 or tx >= map_data.width or ty < 0 or ty >= map_data.height:
+			continue
+
+		if thing is Building:
+			var bld := thing as Building
+			if bld.build_state == Building.BuildState.COMPLETE and _try_render_building_sprite(bld):
+				continue
+
+		var col: Color
+		var state_suffix := ""
+		if thing is Plant:
+			var plant := thing as Plant
+			col = Color(0.1, 0.3 + plant.growth * 0.5, 0.1)
+		elif thing is Item:
+			col = Color(0.8, 0.75, 0.3)
+		elif thing is Building:
+			col = thing.get_color()
+			state_suffix = "_%d" % (thing as Building).build_state
+		else:
+			col = thing.get_color()
+		var key := "thing_%d_%d%s" % [tx, ty, state_suffix]
+		if not _terrain_id_map.has(key):
+			_add_color_tile(col, key)
+		_thing_layer.set_cell(Vector2i(tx, ty), 0, _terrain_id_map[key])
+
+
+func _try_render_building_sprite(bld: Building) -> bool:
+	var tex: Texture2D = null
+	if bld.def_name == "Wall" and not _wall_atlas_textures.is_empty():
+		var mask := _get_wall_bitmask(bld.grid_pos)
+		tex = _wall_atlas_textures[mask]
+	elif _building_textures.has(bld.def_name):
+		tex = _building_textures[bld.def_name]
+	else:
+		return false
+
+	var spr := Sprite2D.new()
+	spr.texture = tex
+	var scale_factor := float(CELL_SIZE) / float(tex.get_width())
+	spr.scale = Vector2(scale_factor, scale_factor)
+	spr.position = Vector2(bld.grid_pos.x * CELL_SIZE + CELL_SIZE / 2, bld.grid_pos.y * CELL_SIZE + CELL_SIZE / 2)
+	spr.z_index = 1
+	add_child(spr)
+	_building_sprites[bld.get_instance_id()] = spr
+	return true
 
 func ensure_pawn_sprites() -> void:
 	if not PawnManager:
@@ -405,24 +447,24 @@ func _build_tileset() -> void:
 	_tileset.tile_size = Vector2i(CELL_SIZE, CELL_SIZE)
 
 	var terrain_colors: Dictionary = {
-		"Soil": Color(0.45, 0.35, 0.2),
-		"SoilRich": Color(0.35, 0.28, 0.15),
-		"Sand": Color(0.78, 0.72, 0.5),
-		"Gravel": Color(0.55, 0.5, 0.42),
-		"MarshyTerrain": Color(0.3, 0.38, 0.2),
-		"Mud": Color(0.4, 0.32, 0.18),
-		"Ice": Color(0.82, 0.88, 0.95),
-		"WaterShallow": Color(0.25, 0.4, 0.6),
-		"WaterDeep": Color(0.15, 0.25, 0.45),
-		"RoughStone": Color(0.5, 0.48, 0.45),
-		"Mountain": Color(0.32, 0.30, 0.28),
-		"Cave": Color(0.20, 0.18, 0.16),
-		"OreGold": Color(0.78, 0.70, 0.24),
-		"OreUranium": Color(0.39, 0.66, 0.39),
-		"OreJade": Color(0.31, 0.63, 0.43),
-		"OrePlasteel": Color(0.63, 0.74, 0.82),
-		"OreSteel": Color(0.55, 0.61, 0.65),
-		"OreCompacted": Color(0.51, 0.51, 0.49),
+		"Soil": Color(0.65, 0.55, 0.35),
+		"SoilRich": Color(0.55, 0.45, 0.25),
+		"Sand": Color(0.85, 0.80, 0.60),
+		"Gravel": Color(0.68, 0.63, 0.55),
+		"MarshyTerrain": Color(0.45, 0.52, 0.32),
+		"Mud": Color(0.55, 0.45, 0.30),
+		"Ice": Color(0.88, 0.92, 0.97),
+		"WaterShallow": Color(0.35, 0.52, 0.70),
+		"WaterDeep": Color(0.22, 0.35, 0.55),
+		"RoughStone": Color(0.62, 0.60, 0.56),
+		"Mountain": Color(0.48, 0.45, 0.42),
+		"Cave": Color(0.32, 0.30, 0.28),
+		"OreGold": Color(0.85, 0.78, 0.30),
+		"OreUranium": Color(0.50, 0.72, 0.50),
+		"OreJade": Color(0.42, 0.70, 0.52),
+		"OrePlasteel": Color(0.72, 0.82, 0.88),
+		"OreSteel": Color(0.65, 0.70, 0.72),
+		"OreCompacted": Color(0.60, 0.60, 0.58),
 	}
 
 	var cols := terrain_colors.size()
@@ -476,6 +518,77 @@ func _add_color_tile(col: Color, key: String) -> void:
 	source.texture = ImageTexture.create_from_image(atlas_img)
 	source.create_tile(new_coord)
 	_terrain_id_map[key] = new_coord
+
+
+func _load_tex_from_file(abs_path: String) -> Texture2D:
+	var img := Image.new()
+	if img.load(abs_path) != OK:
+		return null
+	return ImageTexture.create_from_image(img)
+
+
+func _load_building_textures() -> void:
+	var base: String = ProjectSettings.globalize_path("res://assets/textures/buildings/")
+	var tex_map: Dictionary[String, String] = {
+		"DoorSimple": "DoorSimple_Mover.png",
+		"Bed": "Bed_south.png",
+		"BedDouble": "Bed_south.png",
+		"Stove": "Stove_south.png",
+		"ElectricStove": "Stove_south.png",
+		"CookingStove": "Stove_south.png",
+		"Cooler": "Cooler_south.png",
+		"Battery": "Battery.png",
+		"LampStanding": "LampStanding.png",
+		"LampSun": "LampSun.png",
+		"Table": "Table2x2_south.png",
+		"DiningChair": "DiningChair_south.png",
+	}
+	for def_key: String in tex_map:
+		var abs_path: String = base + tex_map[def_key]
+		if FileAccess.file_exists(abs_path):
+			var tex := _load_tex_from_file(abs_path)
+			if tex:
+				_building_textures[def_key] = tex
+
+	var wall_abs := base + "Wall_Atlas_Planks.png"
+	if FileAccess.file_exists(wall_abs):
+		var atlas_img := Image.new()
+		if atlas_img.load(wall_abs) == OK:
+			var tile_w: int = atlas_img.get_width() / 4
+			var tile_h: int = atlas_img.get_height() / 4
+			for row: int in 4:
+				for col: int in 4:
+					var sub := atlas_img.get_region(Rect2i(col * tile_w, row * tile_h, tile_w, tile_h))
+					_wall_atlas_textures.append(ImageTexture.create_from_image(sub))
+
+
+func _get_wall_bitmask(pos: Vector2i) -> int:
+	var mask: int = 0
+	if _has_wall_at(pos + Vector2i(0, -1)):
+		mask |= 1
+	if _has_wall_at(pos + Vector2i(1, 0)):
+		mask |= 2
+	if _has_wall_at(pos + Vector2i(0, 1)):
+		mask |= 4
+	if _has_wall_at(pos + Vector2i(-1, 0)):
+		mask |= 8
+	return mask
+
+
+func _has_wall_at(pos: Vector2i) -> bool:
+	if map_data == null or not map_data.in_bounds(pos.x, pos.y):
+		return false
+	var cell := map_data.get_cell_v(pos)
+	if cell == null:
+		return false
+	if cell.is_mountain:
+		return true
+	if not ThingManager:
+		return false
+	for t: Thing in cell.things:
+		if t is Building and (t as Building).def_name == "Wall":
+			return true
+	return false
 
 
 func _render_map() -> void:

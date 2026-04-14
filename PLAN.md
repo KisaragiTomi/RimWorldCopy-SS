@@ -2,7 +2,971 @@
 
 > 引擎：Godot 4.6 (GDScript)  
 > 目标：系统级复刻 RimWorld 核心玩法，非像素级还原  
-> 更新：2026-04-13 R310 **Autotest Skill 验证** — 完整跑通 rimworld-autotest skill 流程: 高速运行/截图/工作指挥/建造/战斗征召/存档读取/资源监控
+> 更新：2026-04-14 R328 **Raid 强度平衡调整**
+
+---
+
+## R328: Raid 强度平衡调整 (2026-04-14)
+
+### 问题
+- 5 个突袭者放倒 9/11 殖民者，战斗严重不平衡
+- `raid_manager.gd` 的 `max_r = colony_strength - 1` 公式太宽松
+
+### 修复内容
+
+| 文件 | 修改 | 旧值 | 新值 |
+|------|------|------|------|
+| raid_manager.gd | max_raiders 上限 | `colony_str - 1` (max 12) | `colony_str / 3` (max 6) |
+| raid_manager.gd | raider_count 计算 | `colony_str/4 + rand(0,2)` | `colony_str/5 + rand(0,1)` |
+| raid_manager.gd | Shooting 技能 | 2-10 | 1-7 |
+| raid_manager.gd | Melee 技能 | 2-10 | 1-7 |
+| incident_manager.gd | max_raiders | `pawn_count/2` (max 8) | `pawn_count/3` (max 6) |
+| incident_manager.gd | raider_count | `points/25` (min 2) | `points/30` (min 1) |
+
+### 效果预估 (12 殖民者)
+
+| 指标 | 调整前 | 调整后 |
+|------|--------|--------|
+| 最大突袭人数 | 11 | 4 |
+| 典型突袭人数 | 3-5 | 2-3 |
+| 突袭者射击 | 2-10 | 1-7 |
+| 突袭者近战 | 2-10 | 1-7 |
+
+### 当前游戏状态
+
+| 指标 | 值 |
+|------|-----|
+| 日期 | 12 Decembary, 5500 |
+| Tick | 335,315 |
+| Pawns | 12 (0 dead, 0 downed) |
+| Things | 553 |
+| FPS | 43 |
+| 温度 | 39°C |
+| 救助逻辑 | 倒下殖民者已被救助恢复 ✅ |
+| 撤退逻辑 | 突袭者已撤退, 0 enemy ✅ |
+
+---
+
+## R327: 交互系统 QA 验证 (2026-04-14)
+
+### 点击交互测试
+
+| 功能 | 方法 | 结果 |
+|------|------|------|
+| Pawn 选择 | eval 触发 pawn_selected 信号 | 底部面板显示 Engie(32) ✅ |
+| 需求标签 | Needs/Health/Skills/Social/Gear/Bio/Log | 7 标签页全部可见 ✅ |
+| 需求数据 | Mood/Food/Rest/Joy 彩色进度条 | 数值正确显示 ✅ |
+| 征召按钮 | Invoke-Draft → Invoke-Undraft | drafted=true/false 切换正常 ✅ |
+| Architect 菜单 | tab_changed.emit("architect") | 面板正常打开 ✅ |
+| 底部标签栏 | Work/Restrict/Assign 等 | 标签高亮切换正常 ✅ |
+| 右键菜单 | click button=2 | 右键事件传递正常 ✅ |
+| 地块信息 | 左下角 mouseover readout | Soil/Gravel/RoughStone 正确 ✅ |
+| F 键快捷键 | F1=Architect, F2=Work | 标签切换正常 ✅ |
+
+### 工作系统测试
+
+| 步骤 | 操作 | 结果 |
+|------|------|------|
+| 蓝图放置 | Place-Blueprints (5 types) | 成功 ✅ |
+| 区域创建 | GrowingZone + Stockpile | 85 zones ✅ |
+| 工作分配 | 等待殖民者领取 | 6人全部 Sow ⚠️ 单一 |
+| 保存 | qa_interaction | ok=True ✅ |
+| 加载 | 重载存档 → switch_to_game | 6 pawn + 贴图恢复 ✅ |
+
+### 最终状态
+
+| 指标 | 值 |
+|------|-----|
+| 日期 | 6 Septober, 5500 |
+| Tick | 213,869 |
+| Pawns | 6 (0 dead, 0 downed) |
+| Things | 127 |
+| FPS | 59 |
+| 崩溃 | 0 |
+
+---
+
+## R326: QA 验证 - 美术交互全面检查 (2026-04-14)
+
+### 测试流程
+
+| 步骤 | 操作 | 结果 |
+|------|------|------|
+| 1. 启动 | 关闭旧进程 → 启动 Godot → switch_to_game | 成功 ✅ |
+| 2. 初始状态 | 6 Pawns, Tick 1664, FPS 58, 21°C | 正常 ✅ |
+| 3. 点击殖民者 | 点击头像区域 → 触发灵感事件显示 | 响应正常 ✅ |
+| 4. 点击建筑 | 点击建筑内部 → 显示 Soil 地块信息 | 正常 ✅ |
+| 5. Alerts 面板 | 右侧显示殖民者需求警告 (C/A/R/W) | 工作 ✅ |
+| 6. 征召/取消 | Draft 3人 → 确认 → Undraft 全部 | 成功 ✅ |
+| 7. 蓝图放置 | Place-Blueprints 3个 | 无报错 ✅ |
+| 8. 存档 | Save qa_r326_0414 | saved ✅ |
+| 9. 读档验证 | Test-SaveLoad → 9 keys, ok: true | 完整 ✅ |
+
+### 最终状态
+
+| 指标 | 值 |
+|------|-----|
+| 日期 | 7 Jugust, 5500 |
+| Tick | 126,536 |
+| Pawns | 8 (0 dead, 0 downed) |
+| Things | 101 |
+| FPS | 59 |
+| 温度 | 11.8°C |
+| WS/PM | 408/515 MB |
+| 崩溃 | 0 |
+
+### 美术分析
+
+| 项目 | 状态 | 说明 |
+|------|------|------|
+| 墙壁贴图 | ✅ 良好 | 灰色砖块纹理 + 黑色边框，连接逻辑正确 |
+| 建筑内设备 | ✅ 基本 | 床(黄色)、椅子(白色)、灶台可辨识 |
+| 殖民者渲染 | 🟡 简单 | 圆圈+方块几何形状，缺少细节 |
+| 地板纹理 | ❌ 缺失 | 建筑内部仍为纯黄色，无地板贴图 |
+| 建筑外设备 | 🟡 待改 | 冷却器/电池等仍为纯色方块 |
+| 事件消息 | ❌ 重叠 | 多条消息在左上角叠加显示，需队列/淡出 |
+| Alerts 文字 | 🟡 截断 | 右侧警告标签文字被截断 |
+
+### 交互验证
+
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| 殖民者选择 | ✅ | 点击头像区域有响应 |
+| 地块信息 | ✅ | 左下角正确显示地块属性 |
+| 征召系统 | ✅ | Draft/Undraft 正常工作 |
+| 建造系统 | ✅ | 蓝图放置无报错 |
+| 存档系统 | ✅ | Save/Load 数据完整 (9 keys) |
+| 游戏速度 | ✅ | 速度切换正常 |
+| 事件系统 | ✅ | Cold Snap、天气变化正常触发 |
+
+### Worker 贴图验证 (Round 7 补充)
+
+| 检查项 | 结果 |
+|--------|------|
+| 贴图加载量 | 11 building textures + 16 wall atlas tiles ✅ |
+| Wall Atlas 连接 | 角落/直线/T形/十字 全部正确 ✅ |
+| 门/床/灶/电池/灯/椅 | 各自贴图在 5x 放大下清晰可辨 ✅ |
+| 保存/加载后贴图 | 8 pawn + 贴图完整恢复 ✅ |
+| 运行时加载 | Image.load_from_file 绕过 Godot 导入系统 ✅ |
+
+### 深入交互验证 (Round 2)
+
+| 功能 | 操作 | 结果 | 截图 |
+|------|------|------|------|
+| Pawn选中→InspectPanel | eval选中Hawk → 底部面板弹出 | ✅ 显示 "Hawk (28)", Needs标签 | qa_interact_hawk_selected |
+| Needs标签页 | Mood/Food/Rest/Joy 条 | ✅ 100%/94%/96%/46% | 同上 |
+| Health标签切换 | _show_tab("Health") | ❌ 内容未切换，仍显示Needs | qa_interact_health |
+| 征召+选中 | Draft Engie → InspectPanel | ✅ "Undraft"按钮显示(红色) | qa_interact_draft_move |
+| 征召移动 | draft_move(90,30) → 检查位置 | ✅ Engie从(103,29)移动到(98,12) | qa_interact_draft_move |
+| Architect菜单 | _on_category_selected("Structure") | ✅ 面板打开，9个类别可用 | qa_interact_architect_structure |
+| 自动工作 | 加速运行观察 | ✅ 烹饪持续(食物中毒风险事件触发) | 多截图 |
+
+### 最终状态 (Round 2)
+
+| 指标 | 值 |
+|------|-----|
+| 日期 | 2 Septober, 5500 |
+| Tick | 186,383 |
+| Pawns | 6 (0 dead, 0 downed) |
+| Things | 664 |
+| FPS | 54 |
+| 温度 | 19.7°C |
+| WS/PM | 377/480 MB |
+| 崩溃 | 0 |
+
+### Bug 修复 (Round 3)
+
+| 优先级 | 问题 | 修复 | 文件 |
+|--------|------|------|------|
+| P1 | 通知消息重叠/刷屏 | 位置(120,45)+半透明背景+去重(2s窗口)+缩短显示时间 | notification_overlay.gd |
+| P1 | InspectPanel标签不刷新 | _sync_pawn_data 改为刷新所有标签而非仅 needs/gear | inspect_panel.gd |
+
+### 修复验证 (Round 3)
+
+| 步骤 | 验证 | 结果 | 截图 |
+|------|------|------|------|
+| 1. 通知背景 | 每条消息有独立半透明背景 | ✅ 清晰可读 | qa_fix_notif_02 |
+| 2. 去重 | 烹饪消息不再重复刷屏 | ✅ 2s内相同消息去重 | qa_fix_notif_02 |
+| 3. Health标签 | 选中Engie → 切换Health | ✅ 身体部位+HP条+状态 | qa_fix_tab_needs |
+| 4. Skills标签 | _on_tab_pressed("skills") | ✅ 10项技能+等级条 | qa_fix_tab_skills |
+
+### 待优化项 (更新后)
+
+1. ~~**P1** - 事件消息重叠~~ → **已修复**
+2. ~~**P1** - InspectPanel标签切换bug~~ → **已修复**
+3. **P2** - 地板贴图：为建筑内部添加木地板/石板纹理
+4. **P2** - 设备贴图完善：冷却器/电池/灯等建筑外设备贴图
+5. **P2** - Alerts 文字：调整面板宽度或添加文字缩放
+6. **P3** - 殖民者渲染：增加身体/服装细节
+7. **P3** - Architect面板内建筑图标渲染
+6. **P2** - 工作分配过于单一（全员 Sow），需多样化优先级
+7. **P2** - 流浪者加入过频，需限制人口增长
+
+---
+
+## R325: 建筑贴图渲染集成 (2026-04-14)
+
+### 修改内容
+
+| 优先级 | 问题 | 根因 | 修复 | 文件 |
+|--------|------|------|------|------|
+| P0 | map_viewport.gd 脚本加载失败导致地图全黑 | `var path := base + tex_map[def_key]` 字典返回 Variant 无法类型推断 | `var path: String = ...` 显式类型 + `Dictionary[String, String]` 泛型 | map_viewport.gd |
+| P1 | 建筑贴图无法通过 Godot 资源系统加载 | 运行时添加的 PNG 缺少 .import 文件 | 改用 `Image.load_from_file()` 运行时加载绕过导入系统 | map_viewport.gd |
+
+### 新增功能
+
+- **Wall Atlas 渲染**: 使用 `Wall_Atlas_Planks.png` 4x4 图集，按 4-bit bitmask (N/E/S/W) 选择正确的连接瓷砖
+- **建筑贴图映射**: DoorSimple, Bed, Stove, Cooler, Battery, Lamp, Table, DiningChair 等 12 种建筑定义
+- **Sprite2D 渲染**: 完成状态的建筑使用 Sprite2D 叠加层替代彩色方块
+- **运行时贴图加载**: `_load_tex_from_file()` 通过 `Image.load()` + `ImageTexture.create_from_image()` 加载
+- **连接逻辑**: `_get_wall_bitmask()` 检查四方向相邻墙壁/山脉，`_has_wall_at()` 辅助判断
+
+### 测试验证
+
+| 步骤 | 操作 | 结果 |
+|------|------|------|
+| 1. 修复脚本错误 | 显式类型声明修复 parse error | 地图恢复渲染 ✅ |
+| 2. 运行时加载 | Image.load_from_file 替代 ResourceLoader | 291 张贴图可用 ✅ |
+| 3. 墙壁贴图 | 木板纹理 + 16 连接状态 | 角落/直线/T形正确 ✅ |
+| 4. 设备贴图 | 门/床/灶/电池等 | 渲染正常 ✅ |
+| 5. 保存/加载 | tex_test 存档 → 重载 | 贴图正确恢复 ✅ |
+
+---
+
+## R324: QA 验证 + 编译错误修复 (2026-04-14)
+
+### Bug 修复
+
+| 优先级 | 问题 | 根因 | 修复 | 文件 |
+|--------|------|------|------|------|
+| P0 | `incident_manager.gd:106` 缩进错误导致游戏无法编译 | `var raider_count` 行缩进为3个tab，应为4个tab（在 `if RaidManager:` 块内） | 修正缩进至 if 块内部 | incident_manager.gd |
+| P0 | 突袭者永不撤退 | `_flee()` 只尝试西边逃跑且无强制移除；无超时/无目标撤退机制 | 新增 RAID_MAX_DURATION(15000)超时、NO_TARGET_FLEE_TICKS(300)无目标撤退、多边缘寻路、4次失败强制移除 | raid_manager.gd |
+| P1 | 突袭频率过高 | Raid 冷却仅 8000 tick (~1.3天)，事件间隔 3000-8000 | Raid 冷却→45000 tick (~7.5天), 事件间隔→6000-18000 | incident_manager.gd |
+| P1 | 突袭强度过高 | max_raiders = pawn_count-1 (上限12), 10人 vs 11殖民者 | max_raiders = pawn_count/2 (上限8), points/25 | incident_manager.gd |
+
+### 测试流程
+
+| 步骤 | 操作 | 结果 |
+|------|------|------|
+| 1. 修复编译 | 修正 incident_manager.gd:106 缩进 | 游戏正常启动 ✅ |
+| 2. 启动 | Godot 编辑器 → switch_to_game | 成功，6 Pawn 初始 |
+| 3. 速度设置 | Set-GameSpeed 30 tpf | FPS 17→55→61 |
+| 4. 蓝图放置 | Place-Blueprints 5个 | 成功 ✅ |
+| 5. 自然 Raid | 加速运行中自然触发 | 7 敌人，6 殖民者倒下 |
+| 6. 征召/取消 | Invoke-Draft → Invoke-Undraft | 2人征召，2人取消 ✅ |
+| 7. 存档 | qa_test_0414 | 保存成功 ✅ |
+| 8. 读档验证 | Test-SaveLoad | 9 keys 完整 ✅ |
+
+### 最终状态
+
+| 指标 | 值 |
+|------|-----|
+| 日期 | 12 Jugust, 5500 |
+| Tick | 158,925 |
+| Pawns | 16 (含 7 敌人) |
+| Dead | 0 |
+| Downed | 6 |
+| Things | 137 |
+| FPS | 61 |
+| 温度 | 33.2°C |
+| WS/PM | 370/496 MB |
+| 崩溃 | 0 |
+
+### 战斗状态
+
+| 指标 | 值 |
+|------|-----|
+| 殖民者正常 | 1 |
+| 已征召 | 2 |
+| 倒下 | 6 |
+| 死亡 | 0 |
+| 敌人 | 7 |
+
+### Raid 撤退修复验证
+
+| 测试 | 修复前 | 修复后 |
+|------|--------|--------|
+| 超时撤退 (15000 tick) | 永不触发 | 超时后自动逃跑 ✅ |
+| 无目标撤退 (300 tick) | 无此机制 | 所有殖民者倒下后 raiders 自动撤退 ✅ |
+| 逃跑寻路 | 只尝试西边 | 4个边缘按距离排序尝试 ✅ |
+| 寻路多次失败 | 永远重试 | 4次失败后强制移除 ✅ |
+| Raid 结束 | 无 | raid_active=false, enemy=0 ✅ |
+| 殖民者存活 | 1/8 OK | 6/6 OK (修复后重测) ✅ |
+
+### Round 3: 功能深度验证
+
+| 测试 | 结果 | 详情 |
+|------|------|------|
+| 区域创建 | ✅ | Stockpile 49格 + GrowingZone 64格 |
+| 蓝图放置 | ✅ | 5个 Wall 蓝图 |
+| 工作分配 | ✅ | Sow×9（全员播种） |
+| Raid 3人 | ✅ | 触发→战斗→超时撤退→raid_active=false |
+| 殖民者倒下 | ✅ | 6人倒下→全员恢复（downed=0） |
+| 救助流程 | ✅ | 倒下→自然恢复→回到工作 |
+| 保存 | ✅ | qa_r324_zones, 9 keys (含 zones) |
+| 读取验证 | ✅ | ok=true |
+
+### 最终截图验证 (11 Jugust 5500)
+- 地形清晰、水域/山脉/土壤区分明显
+- 资源面板: Steel 679, Wood 396, MealSimple 244, Silver 500
+- 温度: -8°C (Cold Snap 结束)
+- 6殖民者全部在工作 (T/C/W 状态)
+- 14标签/小地图/事件日志全部正常
+
+### Round 4: Raid 平衡验证 (30TPF 加速)
+
+| 指标 | 修复前 | 修复后 |
+|------|--------|--------|
+| Raid 冷却 | 8000 tick | 45000 tick (~7.5天) |
+| 事件间隔 | 3000-8000 tick | 6000-18000 tick |
+| Max raiders | pawn_count-1 (上限12) | pawn_count/2 (上限8) |
+| 2季度内 Raid 次数 | ~4-5次 | **1次** |
+| 殖民者存活 | 大量倒下 | **10/10 全存活** |
+| 事件总数 (171k tick) | 过多 | **16个** (合理) |
+| 工作系统 | 频繁中断 | **全员工作 (Sow×10)** |
+
+### Round 5: 原版建筑贴图提取
+
+| 步骤 | 结果 |
+|------|------|
+| UnityPy 加载 resources.assets | ✅ 3466 个 Texture2D |
+| 建筑贴图筛选 | ✅ 291 个建筑相关贴图 |
+| 保存到 assets/textures/buildings/ | ✅ Wall, Door, Bed, Stove, Cooler, Lamp, Battery, Generator, Turret 等 |
+| Wall_Atlas_Bricks.png | ✅ 16种连接状态，原版高质量 |
+| Stove/Bed/Cooler 3方向贴图 | ✅ east/north/south 全部提取 |
+
+**待完成**: 修改 `_render_things()` 从彩色方块切换到贴图渲染（需要 Sprite2D 覆盖层方案）
+
+### 已知问题
+
+| 问题 | 严重度 | 说明 |
+|------|--------|------|
+| 建筑渲染为彩色方块 | P2 | 原版贴图已提取，需接入渲染代码 |
+| 食物消耗快 | P3 | MealSimple 归零，需要更多烹饪 |
+| 信息面板温度偶现 "-" | P3 | 继承自 R318 |
+
+---
+
+## R323: QA 全系统验证 (2026-04-14)
+
+### 测试流程
+
+| 步骤 | 操作 | 结果 |
+|------|------|------|
+| 1. 启动 | Godot 编辑器 → switch_to_game | 成功，6 Pawn 初始 |
+| 2. 速度设置 | Set-GameSpeed 6 tpf | FPS 57-59 稳定 |
+| 3. 截图 | 初始画面检查 | 地形颜色清晰，UI 完整 ✅ |
+| 4. 区域创建 | Stockpile(49格) + GrowingZone(64格) | 成功 ✅ |
+| 5. 蓝图放置 | 5 个 Wall 蓝图 | 成功 ✅ |
+| 6. 工作分配 | Haul→Sow 自动切换 | 6人全部工作 ✅ |
+| 7. Raid (3人) | 触发入侵 + 征召5人 | 3 Raider 消灭 ✅ |
+| 8. 战斗结果 | 1 殖民者倒地 → 恢复 | 平衡合理 ✅ |
+| 9. 救援系统 | "Engie needs rescue" 警告 | 自动救援+恢复 ✅ |
+| 10. 存档 | r323_qa.rws | 9 keys 验证通过 ✅ |
+| 11. 天气 | Drizzle → Clear 切换 | 正常 ✅ |
+
+### 最终状态
+
+| 指标 | 值 |
+|------|-----|
+| 日期 | 10 Aprimay, 5500 |
+| Tick | 52,659 |
+| Pawns | 6 (0 dead, 0 downed) |
+| Things | 50 |
+| FPS | 59 |
+| 温度 | 21°C |
+| 食物 | MealSimple 97 + MealFine 10 |
+| WS/PM | 354/473 MB |
+| 崩溃 | 0 |
+
+### 美术/交互评估
+
+| 类别 | 评分 | 说明 |
+|------|------|------|
+| 地形 | **9/10** | R322 亮度修复持续有效，白天/夜间均清晰可辨 |
+| 日夜循环 | **8/10** | 03:00 Light=30% 地形仍可见，CanvasModulate 正常 |
+| Pawn | 7/10 | 头像栏正常，征召/倒地/恢复流程完整 |
+| UI | 8/10 | 资源面板/14标签/小地图/速度控制/警告全部正常 |
+| 战斗 | **8/10** | 3 Raider vs 6 殖民者 → 1倒地 0死亡，平衡合理 |
+| 救援 | **9/10** | "needs rescue" 警告 + 自动恢复 |
+| 天气 | 8/10 | Drizzle→Clear 切换正常显示 |
+| 工作系统 | **9/10** | Haul→Sow 自动切换，区域创建后立即响应 |
+| Save/Load | **10/10** | 9 keys 完整 (game_state/map/pawns/research/things/timestamp/trade/version/zones) |
+
+### Round 2: 深度验证 (监督者反馈后)
+
+| 测试 | 结果 | 详情 |
+|------|------|------|
+| 白天2倍缩放截图 | ✅ | 地形瓦片细节清晰，Soil/Sand/Mountain/Water 区分明显 |
+| Overview 标签 | ✅ | 6 alive, Mood 96%, Wealth 3973, 0 fires |
+| Architect 标签 | ✅ | 9 子分类 (Orders/Zone/Structure/Production/Furniture/Power/Security/Misc/Floors) |
+| Research 标签 | ✅ | 点击响应正常 |
+| 多蓝图建造 | ✅ | 9/10 蓝图放置成功 (1个在不可通行地形) |
+| Stockpile 扩展 | ✅ | 49→113 格 |
+| 多样化工作 | ✅ | Haul(搬运) → Sow(播种) 自然切换 |
+| Raid (3人) | ✅ | 1 殖民者倒地 → 自动恢复，0 死亡 |
+| Rescue 系统 | ✅ | "Engie needs rescue" → 恢复至 downed=0 |
+| Save/Load Round 2 | ✅ | r323_round2.rws, 9 keys |
+| 单进程运行 | ✅ | WS 364 MB, CPU 872s, 无泄漏 |
+
+### 已知问题
+
+| 问题 | 严重度 | 说明 |
+|------|--------|------|
+| 蓝图位置(30,30)不可通行 | P3 | 默认蓝图位置可能在山地，需调整到空地 |
+| 信息面板温度偶现 "-" | P3 | 鼠标悬停某些格子时温度显示为破折号 |
+| 食物消耗快 | P3 | 6殖民者在 Septober 中后期食物归零，无自动烹饪补充 |
+
+---
+
+## R322: 地形亮度修复 + Raid生成修复 + 通知合并 (2026-04-14)
+
+### Bug 修复
+
+| 优先级 | 问题 | 根因 | 修复 | 文件 |
+|--------|------|------|------|------|
+| P2 | 白天画面过暗，14:00晴天仍几乎全黑 | 地形颜色过暗 (Soil: 0.45→原版应为~0.65) | 18种地形颜色全部提亮20-40% | map_viewport.gd |
+| P2 | spawn_raid(5)后敌人数为0 | `raider_count`赋值行(L52)缩进在if块外部，传入count>0时引用未定义变量 | 修正缩进至if块内部 | raid_manager.gd |
+| P3 | MealFine腐烂通知大量堆叠 | 每个物品单独生成一条通知 | 同类物品腐烂合并为一条 "5x MealFine has rotted away" | pawn_manager.gd |
+
+### 地形颜色对比
+
+| 地形 | 修复前 | 修复后 | 变化 |
+|------|--------|--------|------|
+| Soil | (0.45, 0.35, 0.2) | (0.65, 0.55, 0.35) | +44% |
+| SoilRich | (0.35, 0.28, 0.15) | (0.55, 0.45, 0.25) | +57% |
+| Sand | (0.78, 0.72, 0.5) | (0.85, 0.80, 0.60) | +9% |
+| Gravel | (0.55, 0.5, 0.42) | (0.68, 0.63, 0.55) | +24% |
+| Mountain | (0.32, 0.30, 0.28) | (0.48, 0.45, 0.42) | +50% |
+| WaterShallow | (0.25, 0.4, 0.6) | (0.35, 0.52, 0.70) | +30% |
+
+### 修复后验证
+
+| 测试 | 修复前 | 修复后 |
+|------|--------|--------|
+| 白天地形可见度 | 几乎全黑 | **清晰可见** ✅ |
+| spawn_raid(5) 敌人数 | 0 | **5** ✅ |
+| 腐烂通知 | 每个物品1条 | **同类合并** ✅ |
+| 战斗系统 | 未验证(无敌人) | Raider攻击+殖民者倒地+救援 ✅ |
+| Save/Load | ok, 9 keys | ok, 9 keys ✅ |
+
+### 美术/交互评估 (修复后)
+
+| 类别 | 评分 | 说明 |
+|------|------|------|
+| 地形 | **9/10** | 土壤/水域/山脉/沙地颜色清晰，接近RimWorld原版 |
+| Pawn | 6/10 | 头像栏正常，征召红色高亮有效，地图内偏小 |
+| UI | 8/10 | 资源面板/速度控制/底部菜单/小地图/救援警告完整 |
+| 通知系统 | **8/10** | 腐烂通知合并显示，战斗/救援日志清晰 |
+| 征召反馈 | 8/10 | 头像红色背景清晰标识征召状态 |
+
+---
+
+## R321: 需求系统修复 + 多系统验证 (2026-04-14)
+
+### Bug 修复
+
+| 优先级 | 问题 | 根因 | 修复 | 文件 |
+|--------|------|------|------|------|
+| P1 | 需求不下降 | `Pawn.tick_needs()` 存在但从未被调用 | `_on_rare_tick` 新增 `_tick_pawn_needs()` 调用 `tick_needs()` | pawn_manager.gd |
+
+### 系统验证结果
+
+| 系统 | 状态 | 详情 |
+|------|------|------|
+| 需求 (Food/Rest/Joy/Mood) | ✅ | tick_needs 接入后正常下降 (Food: 1.0→0.989, Rest: 0.992, Joy: 0.494) |
+| 建造 (蓝图→墙) | ✅ | 3个蓝图放置并被自动建造 |
+| 战斗 (Raid) | ✅ | R320 已验证通过 |
+| 装备 | ✅ | R318 殖民者初始装备正常 |
+| 愈合/恢复 | ✅ | R317 验证通过 |
+| 殖民者生成 | ✅ | R318 重复生成修复 |
+
+---
+
+## R320: Raider 寻路修复 + 战斗验证通过 (2026-04-14)
+
+### Bug 修复
+
+| 优先级 | 问题 | 根因 | 修复 | 文件 |
+|--------|------|------|------|------|
+| P0 | Raiders 卡在地图边缘不动 | `_get_edge_pos()` 在不可通行的边缘格子生成 raider，寻路永远失败 | 从边缘向内搜索最多10格找可通行位置 | raid_manager.gd |
+
+### 最终战斗验证 (5人Raid)
+
+| 指标 | R317(原始) | R319(初修) | R320(最终) |
+|------|-----------|-----------|-----------|
+| 殖民者存活 | 0/7 | 7/7 | **3/8** |
+| Raider 倒地 | 0/5 | 2/3 | **6/10** |
+| 命中率 | 0.4% | 34% | **49%** |
+| 总攻击(有效) | 3291 | 35 | **217** |
+| 结论 | 全灭 | 太安全 | **平衡** ✅ |
+
+---
+
+## R319: 战斗AI修复 + 命中率修正 + Pain平衡 (2026-04-14)
+
+### Bug 修复
+
+| 优先级 | 问题 | 根因 | 修复 | 文件 |
+|--------|------|------|------|------|
+| P0 | 殖民者不反击 raiders | Pain系数0.04太高(2击倒地); 瞄准延迟60tick太长; 近战toil卡死 | Pain降至0.025; 瞄准20tick; goto_melee添加距离检查自动完成 | health.gd, job_driver_fight.gd |
+| P1 | 命中率统计膨胀 | `total_attacks`在射程检查前递增 | 移至射程检查之后 | combat_manager.gd |
+| P1 | Raider AI距离硬编码 | ranged攻击用`dist<=20.0`而非实际武器射程 | 改用`CombatUtil.WEAPON_DATA`的range | raid_manager.gd |
+| P1 | Melee fight job卡死 | `goto_melee` toil用`complete_mode:"custom"`但无完成条件 | `_on_toil_tick`检查距离<=1.5自动advance | job_driver_fight.gd |
+| P2 | Melee殖民者被分配RangedAttack | `JobGiverFight`不检查武器类型 | 检查`is_ranged_weapon()`决定job类型 | job_giver_fight.gd |
+
+### Raid 战斗测试 (修复后, 3人Raid)
+
+| 指标 | 修复前 | 修复后 |
+|------|--------|--------|
+| 殖民者倒地 | 6/6 (全灭) | **0/7** ✅ |
+| Raider 倒地 | 0/5 | **2/3** ✅ |
+| 命中率 | 0.4% (膨胀) | **34%** |
+| 总攻击(有效) | 3291→71 | **35** |
+
+---
+
+## R318: 殖民者初始装备 + P2修复 + 重复生成修复 (2026-04-14)
+
+### Bug 修复
+
+| 优先级 | 问题 | 根因 | 修复 | 文件 |
+|--------|------|------|------|------|
+| P1 | 殖民者无初始装备 | `_spawn_initial_pawns()` 只分配名字/技能，不给武器/护甲 | 每个殖民者定义增加 gear 字典，生成时 equip | map_viewport.gd |
+| P1 | 重复生成殖民者 | 每次 `switch_to_game()` 都触发 `_spawn_initial_pawns()`，PawnManager 不清空 | 添加 `if not PawnManager.pawns.is_empty(): return` 守卫 | map_viewport.gd |
+| P2 | 殖民者重名 | WandererJoin 随机选名不排除已用名 | 新增 `_pick_unique_name()` 排除已用名 | incident_manager.gd |
+| P2 | Raider 出现在警告面板 | `_check_downed/idle_colonists()` 不过滤 enemy | 添加 `faction == "enemy"` 过滤 | alerts_panel.gd |
+| P2 | 恢复速度过快 | 愈合率 tended=1.0/untended=0.4 太高，10s全员起身 | 降至 tended=0.3/untended=0.08 | health.gd |
+
+### 殖民者初始装备
+
+| 殖民者 | 武器 | 护甲 | Armor Sharp |
+|--------|------|------|-------------|
+| Engie | Revolver | FlakVest | 36% |
+| Doc | Revolver | FlakVest | 36% |
+| Hawk | Rifle | FlakVest+SimpleHelmet | 56% |
+| Cook | Knife | — | 0% |
+| Miner | Revolver | — | 0% |
+| Crafter | Knife | FlakVest | 36% |
+
+### Body Part HP
+
+| 部位 | HP | Vital |
+|------|-----|-------|
+| Torso | 40 | ✓ |
+| Head | 25 | ✓ |
+| LeftArm/RightArm | 20 | ✗ |
+| LeftLeg/RightLeg | 20 | ✗ |
+| LeftEye/RightEye | 10 | ✗ |
+
+### Raid 战斗测试 (装备后)
+
+| 指标 | 值 |
+|------|-----|
+| Raid 规模 | 5 人 |
+| 战斗时长 | ~20s |
+| 总攻击 | 3291 |
+| 命中 | 13 (0.4%) |
+| 殖民者死亡 | 0 |
+| 殖民者倒地 | 0 |
+| Raider 倒地 | 2 |
+| 结论 | 装备护甲有效，殖民者不再秒倒 ✅ |
+
+### 剩余问题
+
+| 问题 | 严重度 | 说明 |
+|------|--------|------|
+| 信息面板温度偶现 "-" | P3 | 鼠标悬停某些格子时温度显示为破折号 |
+
+---
+
+## R317: 战斗平衡 + Downed 恢复 + Rescue 修复 (2026-04-14)
+
+### Bug 修复
+
+| 优先级 | 问题 | 根因 | 修复 | 文件 |
+|--------|------|------|------|------|
+| P0 | Raid 3秒全员倒地 | Raiders 每 tick 攻击无冷却（5 raiders × 6 tpf = 30次攻击/帧） | 添加 MELEE_ATTACK_INTERVAL=90 / RANGED_ATTACK_INTERVAL=120 tick 冷却 | raid_manager.gd |
+| P1 | Downed 永不恢复 | 无伤势自然愈合机制；恢复检查 `is_downed` 与 `pawn.downed` 不同步 | 新增 `tick_healing()` + `should_recover_from_downed()` (去掉 is_downed 检查) | health.gd, pawn_manager.gd |
+| P1 | `being_rescued` 标记泄漏 | JobDriverRescue 被外部中断时 `_release_patient()` 不被调用 | 重写 `end_job()` 方法，自动清理后调 super | job_driver_rescue.gd |
+
+### 战斗数值分析
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| Body Parts | 8 部位, 总 165 HP | Torso(40), Head(25), Arms(20×2), Legs(20×2), Eyes(10×2) |
+| Melee 基础伤害 | 10 | 每次命中 severity=dmg, pain += severity×0.04 |
+| Ranged 基础伤害 | 8 | 同上 |
+| Downed 阈值 | pain ≥ 0.8 | 约 20 总 severity → 3 次命中即倒 |
+| 修复前 DPS | 无限（每 tick 攻击） | 5 raiders = 30+ 攻击/帧 |
+| 修复后 DPS | 近战 90 tick/次, 远程 120 tick/次 | 合理的攻击频率 |
+
+### 修复后验证
+
+| 测试 | 修复前 | 修复后 |
+|------|--------|--------|
+| Raid 5人 5秒后 downed | 全员 7/7 | 仅 1/7 (后增至 4/7) |
+| 殖民者可征召战斗 | 无法（已倒地） | 3人征召成功 |
+| 击败 Raiders | 0 | 1 raider downed |
+| Downed 自然恢复 | 永不恢复 | pain=0 后自动恢复 |
+| being_rescued 泄漏 | 3 标记残留 | 0 泄漏 |
+
+### 伤害日志 Dump
+
+**Raid 5人, 3576 ticks (10s):**
+
+| 指标 | 值 |
+|------|-----|
+| 总攻击 | 71 次 |
+| 命中 | 22 次 (31%) |
+| 暴击 | 1 |
+| 击杀 | 0 |
+| 平均武器伤害 | 10.44 |
+| 致命指数 | 14.22 |
+
+**Raider 装备:**
+
+| Raider | 武器 | Damage | Armor Sharp |
+|--------|------|--------|-------------|
+| Raider_1 | Revolver | 8 | 0% |
+| Raider_2 | Revolver | 8 | 20% (FlakVest) |
+| Raider_3 | Knife | 8 | 36% (FlakVest+Helmet) |
+| Raider_4 | Revolver | 8 | 36% |
+| Raider_5 | Revolver | 8 | 20% |
+
+**殖民者受伤详情 (修复后):**
+
+| 殖民者 | Injuries | Pain | HP% | Downed |
+|--------|----------|------|------|--------|
+| Engie | 3 | 0.624 | 98% | ✓ |
+| Doc | 2 | 0.608 | 95% | ✓ |
+| Hawk | 3 | 0.432 | 100% | ✓ |
+| Cook | 4 | 0.912 | 93% | ✓ |
+| Miner | 3 | 0.656 | 97% | ✓ |
+| Crafter | 3 | 0.496 | 100% | ✓ |
+| Reese | 0 | 0.0 | 100% | ✗ (幸存) |
+
+**恢复验证 (Raid 结束后):**
+
+| 时间 | Downed | Recovering | 说明 |
+|------|--------|------------|------|
+| 0s | 6/7 | — | Raid 结束 |
+| 10s | **0/7** | 1 (Morgan) | 全员恢复 ✅ |
+| 20s | **0/8** | Morgan 1→0 伤 | 持续愈合 ✅ |
+
+### 代码变更
+
+| 文件 | 变更 |
+|------|------|
+| raid_manager.gd | 新增 `_attack_cooldown` 字典 + `MELEE_ATTACK_INTERVAL=90` / `RANGED_ATTACK_INTERVAL=120`；攻击前检查冷却；`_end_raid` 清理冷却 |
+| health.gd | 新增 `tick_healing()` — 每 rare_tick 自然愈合伤势 (tended: 1.0/tick, untended: 0.4/tick) |
+| health.gd | 新增 `should_recover_from_downed()` — pain < 0.4 时可恢复 |
+| pawn_manager.gd | 新增 `_tick_pawn_healing()` — rare_tick 中调用愈合 + downed 恢复检查 |
+| job_driver_rescue.gd | 新增 `end_job()` override — 自动调用 `_release_patient()` |
+
+### 交互功能验证
+
+| 测试 | 结果 | 详情 |
+|------|------|------|
+| F1 游戏启动/切换 | PASS | TCP eval switch_to_game 正常 |
+| F2 速度控制 | PASS | 6 tpf 设置生效，FPS 60 稳定 |
+| F3 区域创建 | PASS | Stockpile 36cells + GrowingZone 49cells |
+| F4 蓝图放置 | PASS | 10个 Wall 蓝图放置成功 |
+| F5 工作分配 | PASS | Sow×7（有 GrowingZone 时正确切换到播种） |
+| F6 工作切换 | PASS | Wander→Sow（区域创建后自动切换） |
+| F7 Raid 触发 | PASS | spawn_raid(5) 正常生成 5 raiders |
+| F8 征召/取消 | PASS | Invoke-Draft/Undraft 正常 |
+| F9 Raid 结束 | PASS | _end_raid() 正确移除 raiders |
+| F10 Rescue 系统 | PARTIAL | 修复后标记不再泄漏，Quinn 成功执行 Rescue |
+| F11 事件系统 | PASS | Toxic Fallout, WandererJoin 等正常触发 |
+
+### Save/Load 数据对比
+
+| 字段 | Runtime | Save File | 匹配 |
+|------|---------|-----------|------|
+| Pawns | 7 | 7 | ✓ |
+| Things | 283 | 282 | ≈ |
+| Zones | 85 | 85 | ✓ |
+| Keys | — | 9 (game_state, map, pawns, research, things, timestamp, trade, version, zones) | ✓ |
+
+### 美术评估
+
+| 类别 | 评分 | 说明 |
+|------|------|------|
+| 地形 | 8/10 | 草地/沙地/水域/山脉过渡自然，颜色层次丰富 |
+| Pawn | 6/10 | 头像栏优秀，地图内默认缩放偏小 |
+| UI | 8/10 | 资源面板/标签/速度控制/事件日志/小地图完整 |
+| 区域 | 6/10 | GrowingZone/Stockpile 颜色与地形接近，辨识度不足 |
+| 快捷键 | 7/10 | 右侧 T/C/R/C/H/A/E 快捷键面板 |
+
+### P2 修复
+
+| 问题 | 修复 | 文件 |
+|------|------|------|
+| 殖民者重名 | 新增 `_pick_unique_name()` — 排除已用名字，全部用完时加数字后缀 | incident_manager.gd |
+| Raider 显示在警告面板 | `_check_downed_colonists()` / `_check_idle_colonists()` 添加 enemy faction 过滤 | alerts_panel.gd |
+
+### 剩余问题
+
+| 问题 | 严重度 | 说明 |
+|------|--------|------|
+| 信息面板温度偶现 "-" | P3 | 鼠标悬停某些格子时温度显示为破折号 |
+
+### 系统资源
+
+| 指标 | 值 |
+|------|-----|
+| WS | 359.8 MB |
+| PM | 483.4 MB |
+| CPU | 268.9s |
+| Threads | 36 |
+| Handles | 519 |
+| FPS | 60 |
+| 崩溃 | 0 |
+
+---
+
+## R316: 交互/压力/美术系统验证 (2026-04-14)
+
+### 交互功能验证
+
+| 测试 | 结果 | 详情 |
+|------|------|------|
+| F1 Pawn 选中 | PASS | InspectPanel 显示 Needs/Health/Skills/Social/Gear/Bio/Log |
+| F2 征召/移动 | PASS | Draft 3人（暂停）→ Undraft 恢复 |
+| F3 右键菜单 | PASS | 显示 Prioritize/Cancel 选项 |
+| F5 建筑放置 | PASS | 20蓝图→Construct+DeliverResources→全部完工 |
+| F6 区域划定 | PASS | 25格 GrowZone 创建成功 |
+| F7 标签切换 | PASS | architect/work/restrict/research 切换正常 |
+| F8 速度控制 | PASS | Paused(60fps)/Normal(60fps)/Fast(50fps)/Ultra(32fps) |
+
+### 压力测试
+
+| 指标 | 值 |
+|------|-----|
+| Pawns | 52 (含 30 敌人) |
+| 持续时间 | 30 秒 |
+| Ticks 处理 | 7,662 |
+| FPS | **40 稳定** |
+| 崩溃 | **0** |
+
+### 美术评估
+
+| 类别 | 评分 | 说明 |
+|------|------|------|
+| 地形 | 7/10 | 草地/水/沙地/山脉区分清晰 |
+| Pawn | 6/10 | 头像栏优秀，地图内默认缩放偏小 |
+| UI | 8/10 | 完善的标签/资源面板/小地图 |
+
+### Save/Load 数据对比
+
+| 字段 | Runtime | Save File | 匹配 |
+|------|---------|-----------|------|
+| Pawns | 22 | 22 | ✓ |
+| Things | 986 | 986 | ✓ |
+| Zones | 25 | 25 | ✓ |
+
+### 额外修复
+- `game_hud.gd`: Trade UI 到达时改为 toast 通知而非自动弹出对话框
+
+---
+
+## R315: P0 性能修复 — RaidManager 寻路瓶颈 (2026-04-14)
+
+### 问题
+
+| 优先级 | 问题 | 根因 | 状态 |
+|--------|------|------|------|
+| P0 | FPS=3-5（Raid 期间） | RaidManager 每 tick 对所有 raider 调用 find_path，失败后无冷却→无限重试 | 已修复 |
+| P1 | Trade UI 持续弹出 | `check_trader_leave()` 从未被 tick 系统调用，商人永不离开 | 已修复 |
+| P2 | autotest.ps1 TPF=30 导致极端 FPS 下降 | Set-GameSpeed 默认 TPF=30，远超设计上限 6 | 已修复 |
+
+### 性能分析
+
+**瓶颈定位**:
+- `RaidManager._on_tick`: **70,526μs** (70.5ms/tick)
+- 单次 `Pathfinder.find_path`: **22ms** (120×120 地图)
+- 寻路失败返回空路径 → raider 下一 tick 重试 → 5 raiders × 22ms = **110ms/tick**
+
+**Pathfinder 问题**:
+- 无 closed set → 节点被重复扩展 → 开放列表线性膨胀
+- `_max_search=2000` 全部耗尽才返回空路径
+
+### 代码变更
+
+| 文件 | 变更 |
+|------|------|
+| raid_manager.gd | 添加 `_path_cooldown` 字典 + `PATH_RETRY_INTERVAL=60`，寻路失败后 60 tick 内不重试 |
+| raid_manager.gd | `_move_toward` / `_flee` 添加冷却检查 |
+| raid_manager.gd | `_end_raid` 时清理冷却数据 |
+| pathfinder.gd | 添加 `_closed_gen` 数组，防止已扩展节点被重复处理 |
+| pathfinder.gd | `remove_at` 改为 swap-with-last（O(1) 删除） |
+| trade_manager.gd | 连接 `TickManager.rare_tick` → `_on_rare_tick` → `check_trader_leave()` |
+| autotest.ps1 | `Set-GameSpeed` 默认 TPF 从 30 改为 6 |
+
+### 验证结果
+
+| 速度 | 修复前 FPS | 修复后 FPS | 提升 |
+|------|-----------|-----------|------|
+| Paused | 60 | 60 | — |
+| Speed 1 (1 TPF) | 14 | **51** | 3.6× |
+| Speed 3 (6 TPF) | 3 | **33** | 11× |
+| 无 Raid | 60 | **60** | — |
+
+RaidManager tick 耗时: **70,526μs → 69μs** (1000× 提升)
+
+---
+
+## R314: P0 功能补全 — Rescue 系统 (2026-04-14)
+
+### 问题
+
+| 优先级 | 问题 | 状态 |
+|--------|------|------|
+| P0 | Rescue 系统完全缺失，倒地殖民者无人救援 | 已修复 |
+| P1 | Trade UI 自动弹出 | 未复现（重启后） |
+| P1 | FPS 从 51→1（高速时） | 系统性问题，251 autoload 节点 |
+
+### 新增文件
+
+| 文件 | 作用 |
+|------|------|
+| job_giver_rescue.gd | 查找倒地殖民者并发起 Rescue 任务 |
+| job_driver_rescue.gd | 走向 → 抬起 → 送到床位 → 放下 |
+
+### 代码变更
+
+| 文件 | 变更 |
+|------|------|
+| pawn_manager.gd | ThinkTree 添加 Rescue（优先级 3，仅次于 Firefight/Fight） |
+| pawn_manager.gd | `_create_driver` 添加 "Rescue" → JobDriverRescue 映射 |
+| pawn_manager.gd | 使用 `preload()` 加载新脚本 |
+
+### 验证结果
+
+| 测试 | 结果 |
+|------|------|
+| Raid 后 Rescue 触发 | Rescue: 2（两人在救援） |
+| being_rescued 标记 | 1 downed pawn 已标记 |
+| Save/Load | ok, 9 keys |
+| 敌人做殖民地工作 | 无（P0 修复继续有效） |
+
+---
+
+## R313: P0 Bug 修复 — 搬运锁定泄漏 + Downed 清理 (2026-04-14)
+
+### 根因分析
+
+| 问题 | 根因 | 影响 |
+|------|------|------|
+| 食物=0 | 无烹饪台 → 无法烹饪 | 所有殖民者饥饿 |
+| 无法建造烹饪台 | 所有材料被 `hauled_by` 永久锁定 | 建筑系统瘫痪 |
+| `hauled_by` 泄漏 | `_start_walk_to_item()` 寻路失败时未释放 | 材料不可用 |
+| Downed 清理缺失 | pawn downed 后 driver 未清理 | 物品泄漏 + 幽灵任务 |
+| 16 殖民者空闲 | 无工作基础设施（0 烹饪台/农田/储存区） | 系统性空闲 |
+
+### 修复内容
+
+| 文件 | 修复 |
+|------|------|
+| job_driver_deliver_resources.gd | `_start_walk_to_item()` 寻路失败时调用 `_release_source_item()` 释放 `hauled_by` |
+| job_driver_deliver_resources.gd | 新增 `_release_source_item()` 方法 |
+| pawn_manager.gd | `_on_tick` 对 downed/dead pawn 调用 `_cleanup_driver()` |
+| pawn_manager.gd | 新增 `_cleanup_driver()` — 结束活跃 driver 并释放物品 |
+| pawn_manager.gd | 新增 `_release_items_for_pawn()` — 重置该 pawn 占用的所有 `hauled_by` |
+
+### 验证结果
+
+| 测试 | 修复前 | 修复后 |
+|------|--------|--------|
+| 烹饪台建造 | 永远停在蓝图 | 材料搬运 → 建造完成 |
+| 熟食数量 | 0 | 302 |
+| hauled_by 泄漏 | 11 items 永久锁定 | 0 |
+| Raid 后敌人工作 | none (R312 修复) | none (继续有效) |
+| Downed 物品释放 | 不释放 | 自动释放 |
+| Save/Load | ok, 9 keys | ok, 9 keys |
+
+---
+
+## R312: P0 Bug 修复 — 敌人做殖民地工作 + Downed 假阳性 (2026-04-14)
+
+### 修复内容
+
+| 文件 | 行号 | 修复 |
+|------|------|------|
+| pawn_manager.gd | 117-120 | `_on_tick` 增加 faction=="enemy" 跳过检查 |
+| raid_manager.gd | 195-204 | `_end_raid` 移除所有 raiders（含存活的），而非仅死亡的 |
+| pawn.gd | 72-74 | `_on_downed` 清除 current_job_name |
+
+### 验证结果
+
+| 测试 | 修复前 | 修复后 |
+|------|--------|--------|
+| Raid +5s 敌人工作 | 4/5 Cook | 0/5（全 none） |
+| Raid +35s 敌人工作 | 1 Cook + 3 Wander | 0/5（全 none） |
+| Downed pawn job_name | 保留旧值 | 已清空 |
+| Save/Load | 正常 | 正常 |
+| 崩溃 | 无 | 无 |
+
+### 根因分析
+
+- **P0 根因**: ThinkTree (`_on_tick`) 遍历所有 pawn 无 faction 检查 → enemy pawn 被分配 Cook/Clean
+- **假阳性根因**: `_on_downed` 未清除 `current_job_name` → 查询时读到旧的 job
+
+---
+
+## R311: 自监督测试 — 敌人工作系统 Bug (2026-04-13)
+
+### 测试流程
+
+| 步骤 | 操作 | 结果 |
+|------|------|------|
+| 1. 启动 | Godot 编辑器 → switch_to_game | 成功，6 Pawn 初始 |
+| 2. 高速运行 | 30 tpf AutoTest | FPS 11-51 |
+| 3. 工作查询 | Get-JobDistribution | 全员 Wander（13人） |
+| 4. 蓝图 | Place-Blueprints 3个 | 成功 |
+| 5. Raid | spawn_raid(5) | 5 敌人生成 |
+| 6. 征召 | Invoke-Draft | drafted=0（已全员倒地） |
+| 7. 监控 | 5轮10s间隔 | 25 downed, 5 enemy 存活 |
+| 8. 存档 | test_save_413 (2513KB) | 成功，9 keys 验证通过 |
+
+### 最终状态
+
+| 指标 | 值 |
+|------|-----|
+| Tick | 399,935 |
+| 日期 | 5501/Aprimay/7 |
+| Pawns | 32 (5 敌人) |
+| Dead | 0 |
+| Downed | 25 (全部殖民者) |
+| col_ok | 2 |
+| Things | 961 |
+| FPS | 19 (30tpf) |
+| 温度 | 35.6°C |
+| WS / PM | 366 / 459 MB |
+
+### 发现的 Bug
+
+1. **敌人执行殖民地工作（P0）**
+   - Raiders 做 Cook（烹饪 MealSimple）和 Clean（清扫）
+   - 敌人出现在殖民者面板（"Raider_3 is idle"）
+   - 原因推测: ThinkTree/工作分配系统未检查 faction，或敌人 hostile 状态过早清除
+
+2. **殖民者大规模倒地无恢复（P1）**
+   - Raid 后 1 秒内 13 殖民者全部倒地
+   - 持续运行一年（5500→5501）downed 人数从 14 增至 25
+   - 少量殖民者执行 TendPatient 但恢复速度远低于新倒地速度
+
+3. **Trade 对话框阻塞（P2）**
+   - 商队到访时 Trade UI 自动弹出并持续打开
+   - 需手动 Escape 关闭
+
+### 正常功能
+
+- 存档/读档: 完整验证通过（game_state, map, pawns, research, things, timestamp, trade, version, zones）
+- 截图: 正常（ss_round1_start/final, ss_current_state）
+- 内存稳定: 360-366MB
+- 无崩溃: 持续运行一整年
 
 ---
 

@@ -63,7 +63,6 @@ static func _check_kill(target: Pawn, attacker: Pawn) -> bool:
 
 
 static func ranged_attack(attacker: Pawn, target: Pawn, weapon_damage: float = 8.0, weapon_range: int = 20) -> Dictionary:
-	total_attacks += 1
 	var wstats := _get_weapon_stats(attacker)
 	if not wstats.is_empty():
 		weapon_damage = wstats.get("damage", weapon_damage) as float
@@ -72,6 +71,7 @@ static func ranged_attack(attacker: Pawn, target: Pawn, weapon_damage: float = 8
 	var dist := attacker.grid_pos.distance_to(target.grid_pos)
 	if dist > weapon_range:
 		return {"hit": false, "reason": "out_of_range"}
+	total_attacks += 1
 
 	var skill_level: int = attacker.get_skill_level("Shooting")
 	var base_hit: float = 0.5 + skill_level * 0.03
@@ -106,7 +106,6 @@ static func ranged_attack(attacker: Pawn, target: Pawn, weapon_damage: float = 8
 
 
 static func melee_attack(attacker: Pawn, target: Pawn, weapon_damage: float = 10.0) -> Dictionary:
-	total_attacks += 1
 	var wstats := _get_weapon_stats(attacker)
 	if not wstats.is_empty() and wstats.get("range", 0) == 0:
 		weapon_damage = wstats.get("damage", weapon_damage) as float
@@ -114,6 +113,7 @@ static func melee_attack(attacker: Pawn, target: Pawn, weapon_damage: float = 10
 	var dist := attacker.grid_pos.distance_to(target.grid_pos)
 	if dist > 1.5:
 		return {"hit": false, "reason": "too_far"}
+	total_attacks += 1
 
 	var skill_level: int = attacker.get_skill_level("Melee")
 	var hit_chance := clampf(0.6 + skill_level * 0.035, 0.1, 0.95)

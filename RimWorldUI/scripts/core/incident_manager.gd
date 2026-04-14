@@ -7,8 +7,8 @@ signal incident_fired(incident_name: String, data: Dictionary)
 
 var _rng := RandomNumberGenerator.new()
 var _next_incident_tick: int = 0
-var _incident_interval_min := 3000
-var _incident_interval_max := 8000
+var _incident_interval_min := 6000
+var _incident_interval_max := 18000
 var storyteller: Storyteller = Storyteller.new(Storyteller.Type.CASSANDRA)
 var _last_day: int = 0
 var _cooldowns: Dictionary = {}
@@ -16,7 +16,7 @@ var incident_history: Array[Dictionary] = []
 var total_incidents: int = 0
 
 const COOLDOWN_TICKS: Dictionary = {
-	"Raid": 8000, "Disease": 6000, "WandererJoin": 5000,
+	"Raid": 45000, "Disease": 20000, "WandererJoin": 8000,
 	"Eclipse": 15000, "Blight": 10000, "AnimalHerd": 8000,
 	"PsychicDrone": 12000, "ManInBlack": 20000,
 }
@@ -41,6 +41,17 @@ func set_storyteller(stype: int) -> void:
 
 func _schedule_next() -> void:
 	_next_incident_tick = (TickManager.current_tick if TickManager else 0) + _rng.randi_range(_incident_interval_min, _incident_interval_max)
+
+
+func _pick_unique_name() -> String:
+	var used: Dictionary = {}
+	if PawnManager:
+		for p: Pawn in PawnManager.pawns:
+			used[p.pawn_name] = true
+	var available: Array = WANDERER_NAMES.filter(func(n: String) -> bool: return not used.has(n))
+	if available.is_empty():
+		return WANDERER_NAMES[_rng.randi_range(0, WANDERER_NAMES.size() - 1)] + "_" + str(_rng.randi_range(1, 99))
+	return available[_rng.randi_range(0, available.size() - 1)]
 
 
 func _is_on_cooldown(event_name: String) -> bool:
@@ -91,7 +102,8 @@ func _on_long_tick(_tick: int) -> void:
 	match event_name:
 		"Raid":
 			if RaidManager:
-				var raider_count := clampi(roundi(result.get("points", 30.0) / 15.0), 2, 30)
+				var max_raiders := clampi(pawn_count / 3, 2, 6)
+				var raider_count := clampi(roundi(result.get("points", 30.0) / 30.0), 1, max_raiders)
 				RaidManager.spawn_raid(raider_count)
 				_record_incident("Raid", {"count": raider_count})
 		"TraderVisit":
@@ -179,7 +191,7 @@ func _incident_wanderer_join() -> void:
 	if not PawnManager or _is_on_cooldown("WandererJoin"):
 		return
 	var p := Pawn.new()
-	p.pawn_name = WANDERER_NAMES[_rng.randi_range(0, WANDERER_NAMES.size() - 1)]
+	p.pawn_name = _pick_unique_name()
 	p.age = _rng.randi_range(18, 55)
 	var map: MapData = GameState.get_map() if GameState else null
 	if map:

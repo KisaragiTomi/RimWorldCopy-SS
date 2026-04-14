@@ -17,10 +17,10 @@ const SEVERITY_COLORS: Dictionary = {
 }
 
 const SEVERITY_DURATION: Dictionary = {
-	"info": 6.0,
-	"positive": 8.0,
-	"warning": 10.0,
-	"danger": 14.0,
+	"info": 3.5,
+	"positive": 5.0,
+	"warning": 7.0,
+	"danger": 10.0,
 }
 
 const SEVERITY_FONT_SIZE: Dictionary = {
@@ -35,10 +35,14 @@ const MUTED_CATEGORIES: Array = []
 signal danger_notification(message: String)
 
 
+var _recent_messages: Dictionary = {}
+const DEDUP_WINDOW := 2.0
+
 func _ready() -> void:
 	layer = 10
 	_container = VBoxContainer.new()
-	_container.position = Vector2(20, 80)
+	_container.position = Vector2(110, 44)
+	_container.custom_minimum_size.x = 500
 	_container.add_theme_constant_override("separation", 4)
 	add_child(_container)
 
@@ -58,7 +62,39 @@ func _on_log_added(entry: Dictionary) -> void:
 	if category in MUTED_CATEGORIES:
 		return
 
+	var dedup_key := category + "|" + message
+	var now := Time.get_ticks_msec() / 1000.0
+	if _recent_messages.has(dedup_key) and now - _recent_messages[dedup_key] < DEDUP_WINDOW:
+		return
+	_recent_messages[dedup_key] = now
+
+	var stale_keys: Array = []
+	for k: String in _recent_messages:
+		if now - _recent_messages[k] > DEDUP_WINDOW * 3.0:
+			stale_keys.append(k)
+	for k: String in stale_keys:
+		_recent_messages.erase(k)
+
 	total_notifications += 1
+
+	while _container.get_child_count() >= _max_visible:
+		var oldest := _container.get_child(0) as Control
+		if oldest:
+			_container.remove_child(oldest)
+			oldest.queue_free()
+
+	var panel := PanelContainer.new()
+	var bg_style := StyleBoxFlat.new()
+	bg_style.bg_color = Color(0.08, 0.08, 0.06, 0.75)
+	bg_style.content_margin_left = 8
+	bg_style.content_margin_right = 8
+	bg_style.content_margin_top = 3
+	bg_style.content_margin_bottom = 3
+	bg_style.set_corner_radius_all(3)
+	bg_style.border_color = Color(0.2, 0.2, 0.18, 0.5)
+	bg_style.border_width_bottom = 1
+	panel.add_theme_stylebox_override("panel", bg_style)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var label := Label.new()
 	label.text = "[" + category + "] " + message
@@ -70,22 +106,18 @@ func _on_log_added(entry: Dictionary) -> void:
 	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
 	label.add_theme_constant_override("shadow_offset_x", 1)
 	label.add_theme_constant_override("shadow_offset_y", 1)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	label.modulate.a = 0.0
-	_container.add_child(label)
+	panel.add_child(label)
+	panel.modulate.a = 0.0
+	_container.add_child(panel)
 
-	var display_time: float = SEVERITY_DURATION.get(severity, 8.0)
+	var display_time: float = SEVERITY_DURATION.get(severity, 5.0)
 	var tween := create_tween()
-	tween.tween_property(label, "modulate:a", 1.0, 0.3)
+	tween.tween_property(panel, "modulate:a", 1.0, 0.2)
 	tween.tween_interval(display_time)
-	tween.tween_property(label, "modulate:a", 0.0, 1.0)
-	tween.tween_callback(label.queue_free)
-
-	while _container.get_child_count() > _max_visible:
-		var oldest := _container.get_child(0) as Control
-		if oldest:
-			_container.remove_child(oldest)
-			oldest.queue_free()
+	tween.tween_property(panel, "modulate:a", 0.0, 0.5)
+	tween.tween_callback(panel.queue_free)
 
 	if severity == "danger":
 		danger_notification.emit(message)

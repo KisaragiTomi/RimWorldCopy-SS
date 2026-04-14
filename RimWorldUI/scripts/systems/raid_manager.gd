@@ -11,6 +11,15 @@ var _rng := RandomNumberGenerator.new()
 var raid_active: bool = false
 var total_raids: int = 0
 var _raid_start_count: int = 0
+var _raid_start_tick: int = 0
+var _no_target_ticks: int = 0
+var _path_cooldown: Dictionary = {}
+var _attack_cooldown: Dictionary = {}
+const PATH_RETRY_INTERVAL := 60
+const MELEE_ATTACK_INTERVAL := 90
+const RANGED_ATTACK_INTERVAL := 120
+const RAID_MAX_DURATION := 15000
+const NO_TARGET_FLEE_TICKS := 300
 
 const RAIDER_WEAPONS := ["Knife", "Revolver", "ShortBow", "Rifle", "Mace", "Spear"]
 const RAIDER_ARMOR := ["", "", "", "FlakVest", "SimpleHelmet"]
@@ -43,7 +52,8 @@ func spawn_raid(raider_count: int = 0) -> void:
 			for p: Pawn in PawnManager.pawns:
 				if not p.has_meta("faction") or p.get_meta("faction") != "enemy":
 					colony_strength += 1
-		raider_count = clampi(colony_strength / 4 + _rng.randi_range(0, 3), 2, 30)
+		var max_r := clampi(colony_strength / 3, 2, 6)
+		raider_count = clampi(colony_strength / 5 + _rng.randi_range(0, 1), 1, max_r)
 
 	var edges := ["West", "East", "North", "South"]
 	var edge_label: String = edges[_rng.randi_range(0, edges.size() - 1)]
@@ -53,8 +63,8 @@ func spawn_raid(raider_count: int = 0) -> void:
 		raider.pawn_name = "Raider_" + str(total_raids * 10 + i + 1)
 		raider.age = _rng.randi_range(18, 45)
 		raider.set_meta("faction", "enemy")
-		raider.set_skill_level("Shooting", _rng.randi_range(2, 10))
-		raider.set_skill_level("Melee", _rng.randi_range(2, 10))
+		raider.set_skill_level("Shooting", _rng.randi_range(1, 7))
+		raider.set_skill_level("Melee", _rng.randi_range(1, 7))
 
 		_equip_raider(raider)
 
@@ -65,6 +75,8 @@ func spawn_raid(raider_count: int = 0) -> void:
 		active_raiders.append(raider)
 
 	_raid_start_count = raider_count
+	_raid_start_tick = TickManager.current_tick if TickManager else 0
+	_no_target_ticks = 0
 	total_raids += 1
 	raid_active = true
 	raid_started.emit(raider_count, edge_label)
@@ -81,16 +93,31 @@ func _equip_raider(raider: Pawn) -> void:
 
 
 func _get_edge_pos(map: MapData, edge: String) -> Vector2i:
-	match edge:
-		"West":
-			return Vector2i(0, _rng.randi_range(20, map.height - 20))
-		"East":
-			return Vector2i(map.width - 1, _rng.randi_range(20, map.height - 20))
-		"North":
-			return Vector2i(_rng.randi_range(20, map.width - 20), 0)
-		"South":
-			return Vector2i(_rng.randi_range(20, map.width - 20), map.height - 1)
-	return Vector2i(0, map.height / 2)
+	for _attempt: int in 20:
+		var pos: Vector2i
+		match edge:
+			"West":
+				pos = Vector2i(0, _rng.randi_range(10, map.height - 10))
+			"East":
+				pos = Vector2i(map.width - 1, _rng.randi_range(10, map.height - 10))
+			"North":
+				pos = Vector2i(_rng.randi_range(10, map.width - 10), 0)
+			"South":
+				pos = Vector2i(_rng.randi_range(10, map.width - 10), map.height - 1)
+			_:
+				pos = Vector2i(0, map.height / 2)
+		for inward: int in range(0, 10):
+			var check := pos
+			match edge:
+				"West": check.x = inward
+				"East": check.x = map.width - 1 - inward
+				"North": check.y = inward
+				"South": check.y = map.height - 1 - inward
+			if map.in_bounds(check.x, check.y):
+				var cell := map.get_cell_v(check)
+				if cell and cell.is_passable():
+					return check
+	return Vector2i(map.width / 2, 5)
 
 
 func _on_tick(_current_tick: int) -> void:
@@ -102,14 +129,35 @@ func _on_tick(_current_tick: int) -> void:
 		_end_raid()
 		return
 
+	var elapsed: int = _current_tick - _raid_start_tick
+	if elapsed > RAID_MAX_DURATION:
+		for raider: Pawn in alive:
+			_flee(raider)
+		_check_all_fled()
+		return
+
 	if _should_flee(alive):
 		for raider: Pawn in alive:
 			_flee(raider)
+		_check_all_fled()
 		return
 
+	var has_target := false
 	for raider: Pawn in alive:
 		if raider.current_job_name.is_empty() or raider.current_job_name == "Wander":
-			_raider_ai(raider)
+			var target := _find_closest_colonist(raider)
+			if target != null:
+				has_target = true
+				_raider_ai_with_target(raider, target)
+
+	if not has_target:
+		_no_target_ticks += 1
+		if _no_target_ticks >= NO_TARGET_FLEE_TICKS:
+			for raider: Pawn in alive:
+				_flee(raider)
+			_check_all_fled()
+	else:
+		_no_target_ticks = 0
 
 
 func _should_flee(alive: Array) -> bool:
@@ -127,16 +175,61 @@ func _flee(raider: Pawn) -> void:
 		raider.set_grid_pos(step)
 		if raider.grid_pos.x <= 0 or raider.grid_pos.x >= map.width - 1 or \
 		   raider.grid_pos.y <= 0 or raider.grid_pos.y >= map.height - 1:
-			raider.dead = true
-			if PawnManager:
-				PawnManager.remove_pawn(raider)
+			_remove_fleeing_raider(raider)
 		return
-	var flee_pos := Vector2i(0, raider.grid_pos.y)
+
+	var cd: int = _path_cooldown.get(raider.id, 0)
+	if cd > 0:
+		_path_cooldown[raider.id] = cd - 1
+		return
+	_path_cooldown.erase(raider.id)
+
+	var flee_attempts: int = raider.get_meta("flee_attempts", 0)
+	if flee_attempts >= 4:
+		_remove_fleeing_raider(raider)
+		return
+
 	var pf: Pathfinder = PawnManager.get_pathfinder() if PawnManager else null
 	if pf == null:
+		_remove_fleeing_raider(raider)
 		return
-	raider.path = pf.find_path(raider.grid_pos, flee_pos)
-	raider.path_index = 0
+
+	var edges: Array[Vector2i] = _get_flee_edges(raider.grid_pos, map)
+	for edge_pos: Vector2i in edges:
+		raider.path = pf.find_path(raider.grid_pos, edge_pos)
+		raider.path_index = 0
+		if not raider.path.is_empty():
+			return
+
+	raider.set_meta("flee_attempts", flee_attempts + 1)
+	_path_cooldown[raider.id] = PATH_RETRY_INTERVAL
+
+
+func _get_flee_edges(pos: Vector2i, map: MapData) -> Array[Vector2i]:
+	var edges: Array[Vector2i] = []
+	var dists: Array[float] = []
+	var candidates: Array[Vector2i] = [
+		Vector2i(0, pos.y),
+		Vector2i(map.width - 1, pos.y),
+		Vector2i(pos.x, 0),
+		Vector2i(pos.x, map.height - 1),
+	]
+	for c: Vector2i in candidates:
+		dists.append(pos.distance_to(c))
+	for _i: int in candidates.size():
+		var best_idx := 0
+		for j: int in range(1, dists.size()):
+			if dists[j] < dists[best_idx]:
+				best_idx = j
+		edges.append(candidates[best_idx])
+		dists[best_idx] = INF
+	return edges
+
+
+func _remove_fleeing_raider(raider: Pawn) -> void:
+	raider.dead = true
+	if PawnManager:
+		PawnManager.remove_pawn(raider)
 
 
 func _raider_ai(raider: Pawn) -> void:
@@ -145,21 +238,33 @@ func _raider_ai(raider: Pawn) -> void:
 	var target := _find_closest_colonist(raider)
 	if target == null:
 		return
+	_raider_ai_with_target(raider, target)
 
+
+func _raider_ai_with_target(raider: Pawn, target: Pawn) -> void:
 	var dist := raider.grid_pos.distance_to(target.grid_pos)
 	var weapon: String = raider.equipment.get_weapon() if raider.equipment else ""
 	var is_melee := weapon in ["Knife", "Longsword", "Mace", "Spear", ""]
+	var cur_tick: int = TickManager.current_tick if TickManager else 0
+
+	var weapon_range: int = CombatUtil.WEAPON_DATA.get(weapon, {}).get("range", 0)
 
 	if is_melee:
 		if dist <= 1.5:
-			CombatUtil.melee_attack(raider, target)
+			if _attack_cooldown.get(raider.id, 0) <= cur_tick:
+				CombatUtil.melee_attack(raider, target)
+				_attack_cooldown[raider.id] = cur_tick + MELEE_ATTACK_INTERVAL
 		else:
 			_move_toward(raider, target.grid_pos)
 	else:
 		if dist <= 1.5:
-			CombatUtil.melee_attack(raider, target)
-		elif dist <= 20.0:
-			CombatUtil.ranged_attack(raider, target)
+			if _attack_cooldown.get(raider.id, 0) <= cur_tick:
+				CombatUtil.melee_attack(raider, target)
+				_attack_cooldown[raider.id] = cur_tick + MELEE_ATTACK_INTERVAL
+		elif dist <= weapon_range:
+			if _attack_cooldown.get(raider.id, 0) <= cur_tick:
+				CombatUtil.ranged_attack(raider, target)
+				_attack_cooldown[raider.id] = cur_tick + RANGED_ATTACK_INTERVAL
 		else:
 			_move_toward(raider, target.grid_pos)
 
@@ -185,21 +290,39 @@ func _move_toward(raider: Pawn, target_pos: Vector2i) -> void:
 		raider.set_grid_pos(step)
 		return
 
+	if _path_cooldown.has(raider.id):
+		_path_cooldown[raider.id] -= 1
+		if _path_cooldown[raider.id] > 0:
+			return
+		_path_cooldown.erase(raider.id)
+
 	var pf: Pathfinder = PawnManager.get_pathfinder() if PawnManager else null
 	if pf == null:
 		return
 	raider.path = pf.find_path(raider.grid_pos, target_pos)
 	raider.path_index = 0
+	if raider.path.is_empty():
+		_path_cooldown[raider.id] = PATH_RETRY_INTERVAL
+
+
+func _check_all_fled() -> void:
+	var alive := active_raiders.filter(func(r: Pawn) -> bool: return not r.dead and not r.downed)
+	if alive.is_empty():
+		_end_raid()
 
 
 func _end_raid() -> void:
 	for r: Pawn in active_raiders:
 		if r.dead:
 			_drop_loot(r)
-			if PawnManager:
-				PawnManager.remove_pawn(r)
+		if PawnManager:
+			PawnManager.remove_pawn(r)
 	active_raiders.clear()
+	_path_cooldown.clear()
+	_attack_cooldown.clear()
 	_raid_start_count = 0
+	_raid_start_tick = 0
+	_no_target_ticks = 0
 	raid_active = false
 	raid_ended.emit()
 	if IncidentManager and IncidentManager.storyteller:

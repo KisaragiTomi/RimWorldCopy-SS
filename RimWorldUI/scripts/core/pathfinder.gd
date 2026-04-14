@@ -13,6 +13,7 @@ var _open_keys: PackedInt32Array
 var _open_f: PackedFloat32Array
 var _generation: int = 0
 var _gen_map: PackedInt32Array
+var _closed_gen: PackedInt32Array
 
 func _init(m: MapData) -> void:
 	map = m
@@ -24,6 +25,9 @@ func _init(m: MapData) -> void:
 	_gen_map = PackedInt32Array()
 	_gen_map.resize(total)
 	_gen_map.fill(0)
+	_closed_gen = PackedInt32Array()
+	_closed_gen.resize(total)
+	_closed_gen.fill(0)
 	_open_keys = PackedInt32Array()
 	_open_f = PackedFloat32Array()
 
@@ -61,9 +65,10 @@ func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	var searched: int = 0
 	var target_key: int = to.y * w + to.x
 
-	while _open_keys.size() > 0 and searched < _max_search:
-		searched += 1
+	var dx := [0, 1, 0, -1]
+	var dy := [-1, 0, 1, 0]
 
+	while _open_keys.size() > 0 and searched < _max_search:
 		var best_idx: int = 0
 		var best_f: float = _open_f[0]
 		for i: int in range(1, _open_f.size()):
@@ -72,8 +77,16 @@ func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 				best_idx = i
 
 		var cur_key: int = _open_keys[best_idx]
-		_open_keys.remove_at(best_idx)
-		_open_f.remove_at(best_idx)
+		var last := _open_keys.size() - 1
+		_open_keys[best_idx] = _open_keys[last]
+		_open_f[best_idx] = _open_f[last]
+		_open_keys.resize(last)
+		_open_f.resize(last)
+
+		if _closed_gen[cur_key] == gen:
+			continue
+		_closed_gen[cur_key] = gen
+		searched += 1
 
 		if cur_key == target_key:
 			return _reconstruct(cur_key, w)
@@ -83,11 +96,13 @@ func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 		var cur_g: float = _g_scores[cur_key]
 
 		for dir: int in 4:
-			var nx: int = cx + [0, 1, 0, -1][dir]
-			var ny: int = cy + [-1, 0, 1, 0][dir]
+			var nx: int = cx + dx[dir]
+			var ny: int = cy + dy[dir]
 			if nx < 0 or nx >= w or ny < 0 or ny >= map.height:
 				continue
 			var nkey: int = ny * w + nx
+			if _closed_gen[nkey] == gen:
+				continue
 			var cell = map.cells[nkey]
 			if cell == null or not cell.is_passable():
 				continue

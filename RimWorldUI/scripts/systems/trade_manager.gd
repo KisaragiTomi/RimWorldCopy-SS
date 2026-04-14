@@ -16,6 +16,8 @@ func _ready() -> void:
 	_rng.seed = randi()
 	if IncidentManager:
 		IncidentManager.incident_fired.connect(_on_incident)
+	if TickManager:
+		TickManager.rare_tick.connect(_on_rare_tick)
 
 
 func _on_incident(incident_name: String, _data: Dictionary) -> void:
@@ -164,6 +166,10 @@ func _log_trade(action: String, item_name: String, qty: int, silver: int) -> voi
 			ColonyLog.add_entry("Trade", "Bought %d %s for %d silver." % [qty, item_name, silver], "info")
 		else:
 			ColonyLog.add_entry("Trade", "Sold %d %s for %d silver." % [qty, item_name, silver], "info")
+
+
+func _on_rare_tick(_tick: int) -> void:
+	check_trader_leave()
 
 
 func check_trader_leave() -> void:

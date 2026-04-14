@@ -46,6 +46,8 @@ func _check_downed_colonists() -> void:
 	if not PawnManager:
 		return
 	for p: Pawn in PawnManager.pawns:
+		if p.has_meta("faction") and p.get_meta("faction") == "enemy":
+			continue
 		if p.downed and not p.dead:
 			_alerts.append({"text": "%s needs rescue" % p.pawn_name, "type": "critical", "age": 0.0})
 
@@ -89,6 +91,8 @@ func _check_idle_colonists() -> void:
 		return
 	for p: Pawn in PawnManager.pawns:
 		if p.dead or p.downed or p.drafted:
+			continue
+		if p.has_meta("faction") and p.get_meta("faction") == "enemy":
 			continue
 		if p.current_job_name.is_empty():
 			_alerts.append({"text": "%s is idle" % p.pawn_name, "type": "minor", "age": 0.0})

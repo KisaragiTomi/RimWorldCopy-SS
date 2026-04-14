@@ -71,6 +71,7 @@ func _init() -> void:
 
 func _on_downed(_pid: int) -> void:
 	downed = true
+	current_job_name = ""
 
 func _on_died(_pid: int) -> void:
 	dead = true

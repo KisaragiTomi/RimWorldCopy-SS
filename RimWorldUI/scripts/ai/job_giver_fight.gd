@@ -22,7 +22,18 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	if closest == null:
 		return {}
 
-	var job_type := "RangedAttack" if closest_dist > 2.0 else "MeleeAttack"
+	var has_ranged := false
+	if pawn.equipment and pawn.equipment.is_ranged_weapon():
+		has_ranged = true
+
+	var job_type: String
+	if closest_dist <= 2.0:
+		job_type = "MeleeAttack"
+	elif has_ranged:
+		job_type = "RangedAttack"
+	else:
+		job_type = "MeleeAttack"
+
 	var j := Job.new(job_type, closest.grid_pos)
 	j.target_thing_id = closest.id
 	return {"job": j, "source": self}

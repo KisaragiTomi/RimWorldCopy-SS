@@ -32,5 +32,15 @@ ss_*.png
 mem_monitor.log
 debug_ss.py
 
+# === Decompiled reference (large, auto-generated) ===
+decompiled/Assembly-CSharp/
+decompiled/Assembly-CSharp-firstpass/
+
+# === Runtime temp files ===
+godot_stdout.txt
+godot_stderr.txt
+entities.json
+mempalace.yaml
+
 # === Cursor internals ===
 .cursor/

@@ -156,12 +156,42 @@ func _calc_bleed(damage_type: String, severity: float) -> float:
 			return severity * 0.02
 
 
+func tick_healing() -> void:
+	var healed_any := false
+	var to_remove: Array[int] = []
+	for i: int in range(hediffs.size() - 1, -1, -1):
+		var h: Dictionary = hediffs[i]
+		if h.type != "Injury":
+			continue
+		var heal_rate: float = 0.3 if h.tended else 0.08
+		h["severity"] = maxf(0.0, h.severity - heal_rate)
+		if h.severity <= 0.01:
+			var part := get_part(h.part)
+			if not part.is_empty() and not part.destroyed:
+				part["hp"] = mini(part.hp + int(ceil(heal_rate)), part.max_hp)
+			to_remove.append(i)
+			healed_any = true
+		else:
+			var part := get_part(h.part)
+			if not part.is_empty() and not part.destroyed:
+				part["hp"] = mini(part.hp + 1, part.max_hp)
+			healed_any = true
+	for idx: int in to_remove:
+		hediffs.remove_at(idx)
+	if healed_any:
+		_recalc()
+
+
+func should_recover_from_downed() -> bool:
+	return _pain_total < 0.4 and not should_be_dead()
+
+
 func _recalc() -> void:
 	_bleed_rate = 0.0
 	_pain_total = 0.0
 	for h: Dictionary in hediffs:
 		_bleed_rate += h.bleed_rate
-		_pain_total += h.severity * 0.04
+		_pain_total += h.severity * 0.025
 
 	var leg_count := 0
 	var arm_count := 0

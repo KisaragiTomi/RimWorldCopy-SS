@@ -66,6 +66,8 @@ func _on_rare_tick(_tick: int) -> void:
 
 func _get_outdoor_temp() -> float:
 	var base: float = GameState.temperature if GameState else 15.0
+	if SeasonManager:
+		base += SeasonManager.get_temp_offset()
 	if WeatherManager:
 		base += WeatherManager.get_temp_offset()
 	return base

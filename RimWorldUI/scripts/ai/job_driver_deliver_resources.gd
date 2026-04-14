@@ -103,11 +103,13 @@ func _find_source_item() -> bool:
 func _start_walk_to_item() -> void:
 	var pf: Pathfinder = PawnManager.get_pathfinder() if PawnManager else null
 	if pf == null:
+		_release_source_item()
 		end_job(false)
 		return
 	pawn.path = pf.find_path(pawn.grid_pos, _source_item.grid_pos)
 	pawn.path_index = 0
 	if pawn.path.is_empty():
+		_release_source_item()
 		end_job(false)
 
 
@@ -165,6 +167,11 @@ func _deliver_material() -> void:
 				pawn.pawn_name, used, _material_name, _target_building.label
 			], "info")
 	end_job(true)
+
+
+func _release_source_item() -> void:
+	if _source_item and _source_item.hauled_by == pawn.id:
+		_source_item.hauled_by = -1
 
 
 func _get_map() -> MapData:

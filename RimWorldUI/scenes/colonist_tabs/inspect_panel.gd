@@ -78,11 +78,7 @@ func _sync_pawn_data() -> void:
 		_current_colonist["insulation_heat"] = pawn.equipment.get_insulation_heat()
 
 	_update_draft_button()
-
-	if _active_tab == "needs":
-		_show_tab("needs")
-	elif _active_tab == "gear":
-		_show_tab("gear")
+	_show_tab(_active_tab)
 
 
 func _on_draft_pressed() -> void:

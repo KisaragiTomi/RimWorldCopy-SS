@@ -3,6 +3,9 @@ extends Node
 ## Manages all pawns: ticks their AI, needs, and jobs.
 ## Registered as autoload "PawnManager".
 
+const _JobGiverRescue = preload("res://scripts/ai/job_giver_rescue.gd")
+const _JobDriverRescue = preload("res://scripts/ai/job_driver_rescue.gd")
+
 signal mental_break_started(pawn: Pawn, break_type: String)
 signal mental_break_ended(pawn: Pawn)
 
@@ -28,6 +31,7 @@ func _build_think_tree() -> void:
 	_think_tree = ThinkNodePriority.new()
 	_think_tree.add_child_node(JobGiverFirefight.new())
 	_think_tree.add_child_node(JobGiverFight.new())
+	_think_tree.add_child_node(_JobGiverRescue.new())
 	_think_tree.add_child_node(JobGiverDoctor.new())
 	_think_tree.add_child_node(JobGiverRest.new())
 	_think_tree.add_child_node(JobGiverEat.new())
@@ -115,6 +119,9 @@ func _on_tick(_tick: int) -> void:
 	current_tick_cached = _tick
 	for p: Pawn in pawns:
 		if p.dead or p.downed:
+			_cleanup_driver(p)
+			continue
+		if p.has_meta("faction") and p.get_meta("faction") == "enemy":
 			continue
 		_tick_pawn(p)
 
@@ -123,6 +130,17 @@ func _on_rare_tick(_tick: int) -> void:
 	_try_social_interactions()
 	_tick_plants()
 	_tick_item_decay()
+	_tick_pawn_healing()
+	_tick_pawn_needs()
+
+
+func _tick_pawn_needs() -> void:
+	for p: Pawn in pawns:
+		if p.dead:
+			continue
+		if p.has_meta("faction") and p.get_meta("faction") == "enemy":
+			continue
+		p.tick_needs()
 
 
 func _try_social_interactions() -> void:
@@ -171,10 +189,52 @@ func _tick_item_decay() -> void:
 			var item := t as Item
 			if item.tick_decay(temp):
 				to_destroy.append(t)
+	var rot_counts: Dictionary = {}
 	for t: Thing in to_destroy:
-		if ColonyLog:
-			ColonyLog.add_entry("Alert", t.label + " has rotted away.", "warning")
+		rot_counts[t.label] = rot_counts.get(t.label, 0) + 1
 		ThingManager.destroy_thing(t)
+	if ColonyLog:
+		for item_label: String in rot_counts:
+			var count: int = rot_counts[item_label]
+			if count > 1:
+				ColonyLog.add_entry("Alert", "%dx %s has rotted away." % [count, item_label], "warning")
+			else:
+				ColonyLog.add_entry("Alert", item_label + " has rotted away.", "warning")
+
+
+func _tick_pawn_healing() -> void:
+	for p: Pawn in pawns:
+		if p.dead:
+			continue
+		if p.has_meta("faction") and p.get_meta("faction") == "enemy":
+			continue
+		if p.health:
+			p.health.tick_healing()
+			if p.downed and p.health.should_recover_from_downed():
+				p.downed = false
+				p.current_job_name = ""
+				if ColonyLog:
+					ColonyLog.add_entry("Health", "%s has recovered." % p.pawn_name, "info")
+
+
+func _cleanup_driver(p: Pawn) -> void:
+	if not _drivers.has(p.id):
+		return
+	var driver: JobDriver = _drivers[p.id]
+	if driver and not driver.ended:
+		driver.end_job(false)
+	_drivers.erase(p.id)
+	_release_items_for_pawn(p.id)
+
+
+func _release_items_for_pawn(pawn_id: int) -> void:
+	if not ThingManager:
+		return
+	for t: Thing in ThingManager.things:
+		if t is Item:
+			var item: Item = t as Item
+			if item.hauled_by == pawn_id:
+				item.hauled_by = -1
 
 
 func _tick_pawn(p: Pawn) -> void:
@@ -287,4 +347,6 @@ func _create_driver(job_def: String) -> JobDriver:
 			return JobDriverWarden.new()
 		"Surgery":
 			return JobDriverSurgery.new()
+		"Rescue":
+			return _JobDriverRescue.new()
 	return null

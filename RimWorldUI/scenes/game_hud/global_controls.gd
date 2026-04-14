@@ -31,7 +31,12 @@ func _sync_from_game() -> void:
 	if GameState:
 		_date_label.text = GameState.get_date_string()
 		_time_label.text = GameState.get_time_string()
-		_temp_label.text = "%.0f\u00b0C" % GameState.temperature
+		var eff_temp: float = GameState.temperature
+		if SeasonManager:
+			eff_temp += SeasonManager.get_temp_offset()
+		if WeatherManager:
+			eff_temp += WeatherManager.get_temp_offset()
+		_temp_label.text = "%.0f\u00b0C" % eff_temp
 
 	if WeatherManager and WeatherManager.has_method("get_current_weather"):
 		var weather: String = WeatherManager.get_current_weather()
@@ -71,7 +76,8 @@ func _build_controls() -> void:
 	vbox.add_child(_time_label)
 
 	_temp_label = Label.new()
-	_temp_label.text = "%.0f\u00b0C" % GameState.temperature
+	var _init_temp: float = GameState.temperature + (SeasonManager.get_temp_offset() if SeasonManager else 0.0)
+	_temp_label.text = "%.0f\u00b0C" % _init_temp
 	_temp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_temp_label.add_theme_font_size_override("font_size", RWTheme.FONT_SMALL)
 	_temp_label.add_theme_color_override("font_color", RWTheme.TEXT_WHITE)

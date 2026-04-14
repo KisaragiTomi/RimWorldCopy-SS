@@ -781,6 +781,10 @@ func _refresh_overview() -> void:
 	var prisoner_count: int = PrisonerManager.prisoners.size() if PrisonerManager else 0
 	var wealth: float = GameState.get_colony_wealth() if GameState else 0.0
 	var temperature: float = GameState.temperature if GameState else 15.0
+	if SeasonManager:
+		temperature += SeasonManager.get_temp_offset()
+	if WeatherManager:
+		temperature += WeatherManager.get_temp_offset()
 	var weather: String = WeatherManager.current_weather if WeatherManager else "Clear"
 	var fire_count: int = FireManager.get_active_fire_count() if FireManager and FireManager.has_method("get_active_fire_count") else 0
 	var research_name: String = ""

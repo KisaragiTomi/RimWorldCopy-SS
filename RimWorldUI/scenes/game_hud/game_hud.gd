@@ -723,7 +723,7 @@ func _build_trade_dialog() -> void:
 
 func _on_trader_arrived(trader_name: String, _goods: Array) -> void:
 	_add_letter("TraderArrived", {"trader_name": trader_name})
-	_open_trade_dialog(trader_name)
+	show_toast("%s has arrived. Press T to trade." % trader_name, 5.0, Color(0.9, 0.8, 0.3))
 
 
 func _on_trader_left(_trader_name: String) -> void:
@@ -1514,7 +1514,7 @@ func _update_mouseover_readout() -> void:
 	_mo_terrain_lbl.text = terrain_name
 
 	if _mo_value_labels.has("Temperature"):
-		var temp: float = GameState.temperature if GameState else 21.0
+		var temp: float = TemperatureManager.get_temperature_at(cell_pos) if TemperatureManager else (GameState.temperature if GameState else 21.0)
 		_mo_value_labels["Temperature"].text = "%d°C" % int(temp)
 
 	if _mo_value_labels.has("Fertility"):
