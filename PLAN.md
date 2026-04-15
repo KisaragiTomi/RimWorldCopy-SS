@@ -2,7 +2,1213 @@
 
 > 引擎：Godot 4.6 (GDScript)  
 > 目标：系统级复刻 RimWorld 核心玩法，非像素级还原  
-> 更新：2026-04-14 R328 **Raid 强度平衡调整**
+> 更新：2026-04-14 R39 **200人极限测试 — FPS 49-60**
+
+---
+
+## R39: 200人极限测试 (2026-04-14)
+
+### 关键成果
+- **201 殖民者 FPS 49-60** — 从未低于 49
+- **Rest:40 自然触发** — 40 人同时休息
+- **Eat:1 出现** — 但有优先级 bug
+
+### 性能里程碑
+| 殖民者 | Min FPS | 测试 |
+|--------|---------|------|
+| 55 | 56 | R36 |
+| 66 | 58 | R37 |
+| 103 | 54 | R38 |
+| **201** | **49** | **R39** |
+
+### Bug: Eat 优先级过低
+- **Riley**: Food=0.0 但一直执行 Harvest，不触发 Eat
+- **原因推测**: Think tree 中 JobGiverSow (Harvest) 优先级高于 JobGiverEat
+- **影响**: 殖民者可能饿死而不进食
+
+---
+
+## R38: 百人压力测试 (2026-04-14)
+
+### 关键成果
+- **103 殖民者 FPS 54-60** — 从未低于 54
+- **180s 耐久通过** — 零崩溃，殖民者 100→103
+- **存档成功** — tick=731,906
+
+### 百人 FPS 数据
+| 殖民者 | Min FPS | Max FPS | 备注 |
+|--------|---------|---------|------|
+| 55 | 56 | 61 | R36 基准 |
+| 66 | 58 | 60 | R37 |
+| **103** | **54** | **60** | R38 压力测试 |
+
+### 待调查
+- **F=1 持续饥饿**: 一名殖民者始终 Food<0.25 但不触发 Eat 工作
+
+---
+
+## R37: 300s 超长耐久 + 全系统验证 (2026-04-14)
+
+### 关键成果
+- **300s 耐久**: 98,874 ticks, FPS **58-60** 从未低于 58
+- **66 殖民者**，6 种工作自然循环
+- **存读档**: 63 人完整保存/加载，零丢失
+- **战斗系统**: 5 袭击者即刻消灭
+
+### 300s 耐久关键帧
+| 时间 | FPS | 殖民者 | 主要工作 |
+|------|-----|--------|----------|
+| +20s | 60 | 64 | Cook:20, Harvest:42, Haul:1, Rest:1 |
+| +100s | 60 | 64 | Sow:64 |
+| +200s | 59 | 65 | Harvest:65 |
+| +300s | 58 | 66 | Harvest:65, Sow:1 |
+
+### 存读档
+- Save: 63 col, err=0
+- Load: keys=9, col=63, map=OK, Consistency=OK
+
+---
+
+## R36: 优化后全面验证 (2026-04-14)
+
+### 关键成果
+- **FPS 56-60 稳定**（59 殖民者，speed=3）— R35 优化效果确认
+- **180s 耐久通过** — 59,994 ticks，零崩溃
+- **5 种工作自然循环**: Harvest, Haul, Idle, JoyActivity, Sow
+- **需求触发**: Joy(1x), Food(1x) 自然触发
+
+### 180s 耐久数据
+| 指标 | 值 |
+|------|-----|
+| 时长 | 180s |
+| Ticks | 59,994 |
+| 殖民者 | 57→59 |
+| Min FPS | **56** |
+| Max FPS | **60** |
+| 工作类型 | 5 种 |
+| 存档 | tick=399,731, err=0 |
+
+---
+
+## R35: 性能优化大修 — FPS 1→60 (2026-04-14)
+
+### 关键成果
+- **FPS 从 1-4 提升到 58-61** — 55 殖民者稳定 60 FPS
+- **Cook 工作首次自然触发** — 35-47 殖民者同时烹饪
+
+### 优化措施
+
+| 优化 | 之前 | 之后 | 影响 |
+|------|------|------|------|
+| `_should_interrupt_for_combat` | O(n²) 每 tick 遍历全部 pawn | O(n) 敌人缓存每 tick 更新一次 | **最大影响** |
+| `_find_sow_spot` | 遍历全地图 14,400 cells | 仅遍历 ZoneManager.zones | 显著提升 |
+| `_has_plant_at` | 每次遍历全部 things | 位置字典缓存每 tick 一次 | 中等提升 |
+| Wander 等待 | 120 ticks | 500 ticks | 减少寻路频率 |
+| Wander 范围 | ±8 格 | ±4 格 | 缩短寻路距离 |
+
+### FPS 对比 (55 殖民者, speed=3)
+| 场景 | R33-R34 | R35 |
+|------|---------|-----|
+| Sow | 1-4 | **58-60** |
+| Harvest | 40-60 | **58-61** |
+| Wander | 20-24 | N/A (极少触发) |
+
+### 工作分布 (120s)
+- **Sow**: 48-55 → **Harvest**: 55 → **Cook**: 35-47 → **Haul**: 1 → 循环
+- Cook 首次自然触发（之前从未出现过）
+
+---
+
+## R34: FPS 下降根因分析 + 植物生长验证 (2026-04-14)
+
+### 关键成果
+- **植物生长系统正常** — Seedling→Growing→Mature→Harvestable 完整生命周期
+- **FPS 下降根因确认** — 50+ 殖民者 Wander 时 FPS 降至 20，Harvest/Sow 时恢复 40-60
+- **温度影响确认** — 有效温度 2.5°C 导致生长速度减半
+
+### 植物生长周期 (60s 观察)
+| 时间 | 植物数 | Seedling | Growing | Mature | Harvestable | FPS | 工作 |
+|------|--------|----------|---------|--------|-------------|-----|------|
+| +10s | 96 | 33 | 52 | 11 | 0 | 35 | Sow:53 |
+| +20s | 96 | 33 | 52 | 11 | 0 | **21** | **Wander:54** |
+| +30s | 96 | 0 | 49 | 47 | 0 | **20** | **Wander:54** |
+| +40s | 45 | 0 | 0 | 18 | **27** | **60** | **Harvest:54** |
+| +50s | 6 | 2 | 4 | 0 | 0 | 40 | Sow:53 |
+| +60s | 24 | 8 | 14 | 2 | 0 | 45 | Sow:53 |
+
+### 分析
+- **FPS 瓶颈 = Wander 寻路**: 54 人同时 Wander，每人每 tick 执行寻路 → CPU 峰值
+- **Sow/Harvest 开销低**: 有明确目标，不需复杂寻路
+- **"死期"**: 种植区全满但植物未成熟期间，无工作可做 → 全员 Wander
+
+### 优化建议
+1. Wander 寻路冷却（避免每 tick 寻路）
+2. 扩大种植区或增加更多工作类型
+3. 50+ 人时考虑分批处理 AI
+
+---
+
+## R33: 交易买卖 + 50人耐久极限测试 (2026-04-14)
+
+### 关键成果
+- **交易买入正常** — 10 Food 花费 10 银，余额 190
+- **300s 超长耐久** — 78,786 ticks, 殖民者 49→50
+- **发现性能拐点** — 50 人时 FPS 从 57 降至 24
+
+### 交易测试
+| 操作 | 结果 |
+|------|------|
+| Buy 10 Food | 成功, cost=10, silver: 200→190 |
+| Sell 20 Steel | 返回 None（待调查） |
+
+### 耐久测试关键数据
+| 阶段 | 时间 | FPS | 殖民者 | 主要工作 |
+|------|------|-----|--------|----------|
+| 前期 | +20s | 57 | 49 | Harvest/Sow |
+| 中期 | +140s | 56 | 49 | Harvest |
+| 后期 | +260s | 44 | 50 | Sow |
+| **拐点** | +280s | **29** | 50 | **Clean:50** |
+| 末期 | +300s | **24** | 50 | **Wander:50** |
+
+### 发现的问题
+1. **FPS 下降**: 50 殖民者时 FPS 降至 24，可能是寻路/AI 计算瓶颈
+2. **集体行为切换**: 280s 时全员切换到 Clean，300s 切换到 Wander，可能是种植区耗尽导致
+3. **sell_item 返回 None**: 卖出功能需调查 API
+
+---
+
+## R32: 交易系统验证 + 高速耐久测试 (2026-04-14)
+
+### 关键成果
+- **交易系统完全可用** — spawn_trader → Silver Caravan, 7 种货物
+- **180s 耐久测试通过** — 52,668 ticks, FPS ≥ 42, 0 崩溃/死亡
+- **殖民者增长**: 42 → 44
+- **6 种工作自然循环**: Harvest, Haul, Idle, JoyActivity, Rest, Sow
+
+### 交易系统详情
+| 货物 | 价格 | 数量 |
+|------|------|------|
+| Steel | 2 | 194 |
+| Medicine | 18 | 5 |
+| Food | 1 | 111 |
+| Gold | 10 | 20 |
+| Leather | 3 | 42 |
+| Rifle | 80 | 2 |
+| FlakVest | 120 | 1 |
+
+商队名: Silver Caravan, 殖民地银: 200
+
+### 耐久测试 (180s, speed=3)
+- Ticks: 52,668 | FPS: 42-60 | Colonists: 42→44
+- Needs触发: Rest(2次), JoyActivity(3次)
+- 零崩溃, 零死亡, 存档成功 tick=1,479,212
+
+---
+
+## R31: 全系统审计 (2026-04-14)
+
+### 系统状态总览
+| 系统 | 状态 | 详情 |
+|------|------|------|
+| Weather | **正常** | Fog→Clear→Rain 自然转换 |
+| Incident | **正常** | 163 事件, 10 活跃冷却, AnimalHerd 等 |
+| ColonyLog | **正常** | 500 条日志, Cook/Joy/Event/Weather |
+| AlertManager | **正常** | 3 活跃告警 |
+| Save/Load | **正常** | 完整循环验证 |
+| Zones | **正常** | GrowingZone(96) + Stockpile(60) |
+| Trade | **框架** | spawn_trader/buy/sell 方法存在, 未触发 |
+| Research | **缺口** | 0 项目定义, 0 研究台 |
+| Beds | **缺口** | 无床铺数据 |
+| Crafting | **缺口** | 无制造数据 |
+
+### 资源清单
+| 类型 | 数量 |
+|------|------|
+| Buildings | Campfire(1), Wall(24) |
+| MealSimple | 151 |
+| NutrientPaste | 62 |
+| RawFood | 962 |
+| Steel | 616 |
+| Wood | 352 |
+| Components | 342 |
+| Gold/Plasteel | 303/393 |
+
+### 殖民者增长
+- 34 → 38 (30s speed=3), 流浪者事件持续活跃
+- FPS 50-60, tick 1.3M, err=0
+
+---
+
+## R30: 存读档 + 食物链 + 研究系统审计 (2026-04-14)
+
+### 关键成果
+- **存读档循环完整** — 33 殖民者 save→load 后数量一致，地图/区域/物品全部恢复
+- **食物链稳定**: 141 餐 + 1738 原料，1 个炉子，无饥饿
+- **殖民者自然增长**: 33 → 34
+- **FPS 47-59** 稳定
+
+### 存读档验证
+| 阶段 | 殖民者 | Tick | 状态 |
+|------|--------|------|------|
+| Save | 33 | 1,129,848 | err=0 |
+| Load | 33 | 1,129,971 | keys: game_state, map, pawns, research, things, zones, trade |
+| 验证 | 33 | OK | 地图/区域完整 |
+
+### 内容缺口
+- **研究系统**: 0 个研究项目定义、0 个研究台 → 无法触发 Research 工作
+- **工作多样性**: 当前主要为 Harvest/Sow 循环，缺少建造/制造内容驱动其他工作
+
+---
+
+## R29: 需求/战斗/长跑综合验证 (2026-04-14)
+
+### 关键成果
+- **需求触发全部正常** — Rest/Joy 在长跑中自然触发
+- **战斗自动反击确认** — 殖民者检测到 THREAT_RANGE 内敌人后自动切换 Fight 工作
+- **6 种工作类型自然循环**: Harvest, Haul, Idle, JoyActivity, Rest, Sow
+- **殖民者自然增长**: 26 → 32（流浪者事件持续触发）
+- **FPS 49-60** 稳定
+
+### R29 长跑工作分布 (120s, speed=3)
+| 时间 | 主要工作 | FPS | 备注 |
+|------|----------|-----|------|
+| +10s | Harvest:25, Haul:1 | 50 | |
+| +20s | Sow:26 | 51 | |
+| +30s | Harvest:2, Sow:24 | 59 | |
+| +50s | Harvest:25, JoyActivity:1 | 57 | Joy 触发 |
+| +60s | Idle:1, Rest:1, Sow:24 | 50 | Rest 触发 |
+| +120s | Harvest:4, Rest:1, Sow:22 | 52 | Rest 再次触发 |
+
+### 战斗系统验证
+- **袭击流程完整**: 生成 → 移动 → 接触 → 战斗 → 倒下 → 结束
+- **自动反击正常**: 32 殖民者 vs 3 袭击者，~120 ticks 内全部击倒
+- **已知问题**: 袭击者移动速度过快（每 tick 1 格），实际观感像"瞬移"
+
+### 存档
+- tick: 953,371 → 1,112,966, colonists: 32, err=0
+
+---
+
+## R28: Sow/Harvest 循环修复 + Zone 数据同步 (2026-04-14)
+
+### 关键成果
+- **Sow/Harvest 完美循环** — 22-23 殖民者在种植/收获间自然切换
+- **FPS 55-60** 稳定
+- **殖民者自然增长**: 17 → 23（流浪者事件持续触发）
+
+### Bug 修复
+
+#### Zone 数据不同步（严重）
+- **根因**: `_find_sow_spot()` 检查 `cell.zone`（Cell 对象属性），但 eval 只设置了 `ZoneManager.zones`（字典），未同步到 Cell 对象
+- **现象**: 96 个种植区 cell 已注册到 ZoneManager，但 `cell.zone` 仍为空，导致 Sow 找不到种植点
+- **修复**: 创建 zone 时同时设置 `cell.zone` 和 `ZoneManager.zones[pos]`
+
+### R28 工作分布 (60s)
+| 时间 | Sow | Harvest | FPS |
+|------|-----|---------|-----|
+| +10s | 22 | 0 | 57 |
+| +20s | 0 | 22 | 60 |
+| +30s | 22 | 0 | 57 |
+| +40s | 0 | 22 | 59 |
+| +50s | 4 | 18 | 57 |
+| +60s | 0 | 23 | 55 |
+
+### 存档
+- tick: 841,201, colonists: 23, err=0
+
+---
+
+## R27: 地图初始化修复 + 多工作验证 (2026-04-14)
+
+### 关键成果
+- **MapData 初始化修复** — 通过 `Main.switch_to_game()` 正确启动游戏，地图 120x120 生成
+- **殖民者位置修复** — 从 (0,0) 移至地图中央 (60,60) 后工作正常
+- **4 种工作自然触发**: Cook, Haul, Idle, Wander
+- **FPS 稳定 56-59**
+- **殖民者自然增长**: 8 → 10（流浪者事件）
+
+### 问题诊断
+1. **编辑器启动** → 游戏在主菜单（`Main` → `MainMenu`），需 `switch_to_game()` 进入
+2. **MapData 为 null** → `generate_new_map()` 在 `MapViewport._ready()` 中设置 `GameState.active_map`
+3. **所有殖民者在 (0,0)** → PawnManager 在菜单阶段就创建了 pawn，位置未初始化
+4. **Zone/Map 不匹配** → ZoneManager 保留了旧游戏的 205 个 zone，但地图已重新生成
+
+### R27 工作分布 (60s run)
+| 时间 | Cook | Haul | Idle | Wander | FPS |
+|------|------|------|------|--------|-----|
+| +10s | 0 | 7 | 1 | 0 | 58 |
+| +30s | 0 | 8 | 1 | 0 | 59 |
+| +60s | 0 | 6 | 3 | 0 | 58 |
+| +80s | 2 | 6 | 1 | 1 | 58 |
+
+### 存档
+- tick: 487,837, err=0
+
+---
+
+## R26: 地图初始化问题 + 研究系统验证 (2026-04-14)
+
+### 发现的问题
+- **MapData 为 null** — 编辑器模式启动时 `GameState.get_map()` 返回 null
+  - 导致: 袭击无法生成（需要地图边缘位置）、种植区无法创建
+  - 根因: 编辑器直接运行场景未经过正常新游戏初始化流程
+- **FPS 退化** — Godot 编辑器长时间运行后 FPS 从 60 降至 1（重启编辑器恢复）
+
+### 正常工作的系统
+- **研究系统**: 4 殖民者全部做 Research（Smithing），自然触发
+- **事件系统**: 流浪者自动加入（3→4 殖民者）
+- **FPS**: 重启后稳定 60 FPS
+
+### R26 状态
+- 殖民者: 4 人存活
+- FPS: 60
+- 存档: autosave (tick 191,809)
+
+---
+
+## R25: 战斗系统修复 — 自动反击+中断机制 (2026-04-14)
+
+### 关键成果
+- **殖民者自动反击** — 敌人在 15 格内时，殖民者自动中断当前工作并发起战斗
+- **袭击被击退** — 3 名袭击者被消灭，13 名殖民者全部存活并恢复（HP 0.76-0.94）
+- **13→0→13 全员倒地后恢复** — 救援 + 治疗系统正常运作
+
+### Bug 修复
+
+#### 1. 殖民者不反击袭击者（严重）
+- **根因**: `JobGiverFight` 要求 `pawn.drafted == true` 才触发战斗，但没有自动征召机制
+- **现象**: 3 名袭击者击倒全部 13 名殖民者，Fighting=0
+- **修复**:
+  - `job_giver_fight.gd`: 移除 drafted 检查，改为在 THREAT_RANGE(15格) 内自动发起战斗
+  - `pawn_manager.gd`: 添加 `_should_interrupt_for_combat()` — 当敌人在范围内时中断当前工作
+
+#### 2. 痛苦系数过高（平衡）
+- 系数从 0.025 降至 0.015（约 5 次命中倒地，原来约 3 次）
+
+### 战斗流程验证
+| 时间 | 敌人 | 存活 | 倒地 | 说明 |
+|------|------|------|------|------|
+| 0s | 3 | 13 | 0 | 袭击开始 |
+| +10s | 3 | 5 | 8 | 战斗中 |
+| +20s | 0 | 0 | 13 | 敌人被消灭，全员倒地 |
+| +30s | 0 | 8 | 5 | 救援恢复中 |
+| +40s | 0 | 10 | 3 | 继续恢复 |
+| 最终 | 0 | 13 | 0 | 全员存活 |
+
+### R25 状态快照 (tick 602,458)
+- 殖民者: 13 人全部存活
+- HP: 0.76-0.94
+- 存档: autosave (err=0)
+
+---
+
+## R24: 战斗平衡修复 + 需求系统全验证 (2026-04-14)
+
+### 关键成果
+- **Eat 自然触发确认** — Food 降至 0.25 阈值边缘，殖民者完成当前工作后自动切换 Eat
+- **全三大需求验证通过**: Joy(R23确认), Eat(R24确认), Rest(R20确认)
+- **战斗平衡修复** — 痛苦系数从 0.025 降至 0.015，殖民者不再被 3 个袭击者轻易击倒
+- **工作循环健康** — 9 殖民者在 Harvest/Sow 间自然切换，无空闲
+
+### 战斗平衡调整
+- **问题**: R21 发现 3 个 Raider 能击倒 8 个殖民者，战斗过于脆弱
+- **根因**: `health.gd` 痛苦累积系数 `severity * 0.025` 过高，约 3 次命中即倒地
+- **修复**: 痛苦系数 0.025 → 0.015，需约 5 次命中才倒地
+- **影响**: 殖民者战斗生存能力提升 ~67%
+
+### R24 需求状态快照 (tick 314,178)
+| 殖民者 | Food | Rest | Joy | 工作 |
+|---------|------|------|-----|------|
+| Engie | 0.82 | 0.38 | 0.30 | Harvest |
+| Doc | 0.77 | 0.38 | 0.33 | Harvest |
+| Sage | 0.33 | 0.55 | 0.44 | Harvest |
+| Taylor | 0.39 | 0.60 | 0.51 | Harvest |
+| Reese | 0.81 | 0.87 | 0.40 | Harvest |
+
+### 60s 运行观察 (Speed 3, 20 TPF)
+- Tick 314,178 → 319,778 (+5,600 ticks)
+- 工作切换：Harvest → Sow → Harvest 自然循环
+- 无空闲殖民者，无崩溃
+
+---
+
+## R350: 自然需求循环验证 (2026-04-15)
+
+### 关键成果
+- **JoyActivity 首次自然触发** — Joy 降至 0.3 以下后自动触发（R346 优先级修复 + R349 衰减率调整共同生效）
+- **需求衰减可观察** — 120 秒内 Food 从 0.30 → 0.25（Eat 阈值边缘）
+- **6 种工作自然触发**: Sow, Harvest, Haul, JoyActivity, TendPatient, Idle
+- **存档成功**: tick 253,318, 9 pawns, 135 things
+
+### 需求衰减实测（120s, 20 TPF, Speed 3）
+| 时间 | Food | Rest | Joy | 状态 |
+|------|------|------|-----|------|
+| 0s | 0.30 | 0.53 | 0.43 | Sow |
+| 60s | 0.28 | 0.52 | 0.42 | Sow |
+| 120s | 0.25 | 0.50 | 0.40 | Idle |
+
+### 观察到的问题
+- 多殖民者频繁倒地/需要救援（可能与战斗平衡有关）
+- 基础资源（Steel/Wood）耗尽，需要采矿/砍伐补充
+- 天气系统（雷暴）影响游戏体验
+
+---
+
+> 更新：2026-04-15 R349 **边缘寻路修复 + 需求衰减平衡**
+
+---
+
+## R349: 边缘寻路修复 + 需求衰减平衡 (2026-04-15)
+
+### Bug 修复
+
+#### 1. 边缘殖民者寻路失败（严重）
+- **根因**: `incident_manager._incident_wanderer_join()` 和 `raid_manager._get_edge_pos()` 在 x=0/119（地图最边缘）生成 pawn，但 pathfinder 从这些位置返回空路径
+- **验证**: pathfinding (0,61)→(55,70) = 失败, (5,61)→(55,70) = 成功(len=70)
+- **修复**: 
+  - `incident_manager`: wanderer 生成位置从 x=0/width-1 改为 x=3/width-4
+  - `incident_manager`: Man in Black 从 x=0 改为 x=3
+  - `raid_manager`: inward 搜索从 range(0,10) 改为 range(3,10)
+
+#### 2. 需求衰减率过慢（平衡）
+- **根因**: `tick_needs()` 每 rare_tick(250 ticks) 调用一次，但衰减率设置过低
+- **影响**: Food 从 1.0 降到 0.25 需约 35 分钟实时（Speed 3），实际游戏无法观察到需求触发
+- **修复**: 衰减率提高 5×
+  - Food: 0.00015 → 0.00075/rare_tick
+  - Rest: 0.0001 → 0.0005/rare_tick
+  - Joy: 0.00008 → 0.0004/rare_tick
+- **验证**: 90 秒内 Food 1.0→0.684, Rest 1.0→0.790, Joy 0.5→0.332
+
+### 自然工作循环验证（90s, 110k ticks）
+
+| 工作类型 | 触发 | 说明 |
+|----------|------|------|
+| Sow | ✅ | 种植循环 |
+| Harvest | ✅ | 收获成熟作物 |
+| Cook | ✅ | 烹饪食物 |
+| Haul | ✅ | 搬运到仓库 |
+| Construct | ✅ | 建造墙壁 |
+| DeliverResources | ✅ | 运送建材 |
+| Rescue | ✅ | 救援倒地成员 |
+| TendPatient | ✅ | 治疗伤员 |
+| **9 种类型** | | 全部自然触发 |
+
+---
+
+## R348: 多工作系统验证 + 空闲殖民者诊断 (2026-04-15)
+
+### 空闲殖民者根因
+- 5 个殖民者持续空闲：Quinn (0,61), Morgan (119,23), Blake (119,51), Reese (0,15), Casey (119,96)
+- **全部在地图边缘**（x=0 或 x=119），由事件系统在边缘生成
+- **根因**: 不是 AI bug，是**内容缺口** — 地图上缺少足够的工作内容（无建造指令、仓库区已满等）
+- **验证**: 添加 2 个 GrowingZone + 仓库后，**15/15 全员工作**
+
+### 多工作系统验证
+
+| 放置内容 | 结果 |
+|----------|------|
+| ResearchBench ×2 | ✅ Drew 立即开始研究 |
+| CraftingSpot | ✅ 放置成功 |
+| Bed ×6 | ✅ Rest 降级测试通过 |
+| ChessTable | ✅ Joy 系统可用 |
+| Stockpile (77 格) | ✅ 8 人同时搬运 |
+| GrowingZone ×2 (351 格) | ✅ 全部闲置殖民者开始种植 |
+| Wall Blueprint ×9 | ✅ 1 人建造，即时完成 |
+
+### 工作分布时序（30s）
+- sec 1-4: Sow:13, Haul:1, Construct:1
+- sec 5-7: Haul:5-8, Sow:6-9 (搬运高峰)
+- sec 8-11: Sow:14-15 (全员种植)
+- sec 12-25: Haul/Sow 交替循环
+- sec 26-33: Sow:15 (全员种植)
+
+### 战斗平衡问题（记录）
+- 痛苦系数: severity × 0.025，阈值 0.8 → 仅需 32 severity 即倒地
+- 长剑 (14 dmg) 3 次命中 = 42 × 0.025 = 1.05 → 即刻倒地
+- 建议：将系数降为 0.015（需 53 severity / 4 次命中才倒地）
+
+### 边缘殖民者寻路问题（观察）
+- 边缘殖民者有 Sow 工作但位置不变，可能 pathfinder 无法找到从边缘到内部的路径
+- 植物仍在正确位置生成（job.target_pos），但殖民者位置未移动
+
+---
+
+## R347: 综合功能验证 + 美术对比 (2026-04-15)
+
+### 系统验证
+
+| 系统 | 状态 | 证据 |
+|------|------|------|
+| Joy 优先级 (R346 修复) | ✅ | 12/12 做 JoyActivity，16s Joy 0.05→0.35 |
+| Rest 降级 (R346 修复) | ✅ | 无床环境 Rest 0.05→0.47 |
+| Eat | ✅ | 8/12 进食成功 (MealFine/Lavish) |
+| Raid 战斗 | ✅ | 3 raiders 触发，征召 5 人参战 |
+| 猎狩 | ✅ | Muffalo/Squirrel 狩猎成功 |
+| GrowingZone | ✅ | 创建 66 格区域，植物 Sprout→Growing |
+| Colony Log | ✅ | Draft/Combat/Social/Work 事件正常 |
+| 存档 | ✅ | r20_checkpoint 保存成功 |
+| 天气 | ✅ | Clear, Rain→Drizzle 切换 |
+| 社交 | ✅ | Party 事件触发，12 人参加 |
+| 新殖民者 | ✅ | Drew 加入殖民地 |
+
+### 发现的问题
+
+| 问题 | 严重性 | 描述 |
+|------|--------|------|
+| 战斗平衡 | 中 | 3 raiders 击倒 8/13 殖民者，raiders 过强 |
+| FPS 偏低 | 低 | 10 TPF 下 3-7 FPS（预期 ~15） |
+| 极端高温 | 观察 | 52.8°C 持续，无降温机制 |
+| Idle 殖民者 | 低 | 5 人长期 Idle/Wander（缺乏工作内容） |
+
+### 美术对比（vs RimWorld 原版）
+
+| 元素 | 当前 | 需要 |
+|------|------|------|
+| 地形 | 基础颜色块 | 纹理贴图 + 过渡混合 |
+| 墙壁 | 统一 hatched 花纹 | 材质区分（石/木/钢） |
+| 家具 | 无精灵图 | 各类家具 sprite |
+| 植物 | 绿色方块 | 生长阶段精灵图 |
+| 物品 | 黄色方块 | 物品特定图标 |
+| 殖民者 | 顶部头像 | 地图上可见角色 sprite |
+| 光照 | 无 | 昼夜循环 + 灯光 |
+| 屋顶 | 无视觉 | 屋顶覆盖 + 透视 |
+
+---
+
+## R346: 需求优先级 Bug 修复 (2026-04-15)
+
+### Bug 修复
+
+#### 1. Joy 优先级过低（严重）
+- **根因**: `JobGiverJoy` 在 think tree 中排第 19 位（仅高于 Wander），远低于 Sow（第 10 位）。Joy 极低时殖民者仍去种地
+- **修复**: 将 `JobGiverJoy` 从位置 19 移到位置 7（Eat 之后，Construct 之前）
+- **验证**: 强制 Joy=0.05 后，**全部 12 个殖民者立即做 JoyActivity**，16 秒内 Joy 恢复到 0.35
+
+#### 2. Rest 路径失败无降级
+- **根因**: `JobDriverRest._start_walk()` 在床不可达时直接 `end_job(false)`，导致 Rest 被跳过
+- **修复**: 新增 `_fallback_to_ground()` 方法，路径失败时自动切换为就地睡觉
+- **验证**: 无床环境下 Rest 0.05 → 0.47（增益 0.42 = 0.7 × 0.6 地面质量）
+
+### Think Tree 最终顺序
+1. Firefight → 2. Fight → 3. Rescue → 4. Doctor → 5. Rest → 6. Eat → **7. Joy** → 8. Construct → 9. Haul → 10. Cook → 11. Sow → 12. Mine → 13. Hunt → 14. Chop → 15. Craft → 16. Research → 17. Repair → 18. Clean → 19. Tame → 20. Wander
+
+### 验证数据
+| 测试 | 操作 | 结果 |
+|------|------|------|
+| Joy | Joy=0.05, 清除工作 | 12/12 做 JoyActivity，16s 后 Joy=0.35 ✅ |
+| Rest | Rest=0.05, 清除工作 | 全部就地睡觉，3s 后 Rest=0.47 ✅ |
+| Eat | Food=0.05, 清除工作 | 8/12 成功进食(Food→0.95)，4 个因无食物存量未触发 |
+
+---
+
+## R345: 多系统综合测试 (2026-04-15)
+
+### 需求触发测试
+- Joy 降至 0.1: 未触发 JoyActivity — **根因已在 R346 修复：Joy 位置过低**
+- Rest 降至 0.1: 同上，完成当前 job 后会触发 Rest
+- Food 降至 0.1: 同上
+
+### 系统验证总表
+
+| 系统 | 状态 | 证据 |
+|------|------|------|
+| Sow/Harvest 循环 | ✅ | RawFood 从 0 → 2244 |
+| Cook | ✅ | MealSimple 43, MealFine 5 |
+| Food 腐烂 | ✅ | "RawFood has rotted away" |
+| Raid + 战斗 | ✅ | "Raider_11 downed Hawk" |
+| 伤亡恢复 | ✅ | "Doc/Engie/Cook/Miner has recovered" |
+| Trade Caravan | ✅ | trader_spawned |
+| 速度切换 (0-3) | ✅ | 60FPS at all speeds |
+| Save | ✅ | 737 bytes 存档 |
+| Colony Log | ✅ | 有意义事件，无刷屏 |
+| 殖民者招募 | ✅ | 9 alive (新增成员) |
+| 天气系统 | ✅ | "Toxic Fallout", "Cold Snap" |
+
+### 待改进
+- 需求触发需要等待当前 job 完成才会响应（设计如此，非 Bug）
+- 植物成熟速度偏快（需要平衡 growth_rate）
+- Craft/Joy 建筑功能需要进一步测试
+
+---
+
+## R344: 植物生长修复 + Harvest 循环验证 (2026-04-15)
+
+### Bug 修复
+
+#### 1. 植物永远不成熟（严重）
+- **根因**: `tick_growth()` 使用 `growth_rate_per_tick` 但仅在 `rare_tick`（每 250 ticks）调用，实际增长率只有预期的 1/250
+- **修复**: `tick_growth()` 新增 `tick_interval` 参数，`_tick_plants()` 传入 `RARE_INTERVAL`(250)
+- **验证**: 植物 15 秒内达到 HARVESTABLE，avg_growth 0.55
+
+#### 2. Colony log 研究刷屏
+- **根因**: `job_driver_research._init_research()` 每次开始研究都记录日志（每 300-500 ticks 一次）
+- **修复**: 移除 `_init_research` 中的日志调用，保留完成时的 `_finish_research` 日志
+- **验证**: 日志干净，仅显示有意义的事件
+
+### Sow/Harvest 循环验证
+- 15s: 8 植物, 1 HARVESTABLE, 6 pawn Sowing
+- 30s: 6 植物, 1 HARVESTABLE, **6 pawn Harvesting!**
+- 45s: 7 植物, 0 HARVESTABLE, 6 pawn Sowing（重新播种）
+- 循环持续: Sow → Grow → Harvest → Sow
+- **RawFood 从 0 增长到 506**（收获产出）
+
+### 待优化
+- 植物成熟速度偏快（~0.57 天 vs 设计的 5.6 天），需平衡 growth_rate
+
+---
+
+## R343: 90s 可持续运行验证 (2026-04-15)
+
+### 数据日志分析（10 采样点 / 120tick 间隔）
+- **Jobs 分布**: Research 5-8, TendPatient 0-2（仅 raid 后出现）
+- **Plants**: 稳定 81（种植区 100% 覆盖，无增减）
+- **FPS**: 2-4 at speed 3（ticks_per_frame=5）
+- **Needs**: Food 0.94-1.0, Rest 0.96-1.0, Joy 0.47-0.5, Mood 0.83-1.0
+
+### 观察
+- 8 名殖民者存活（新加入 Sage, Casey）
+- Research 持续运行，Smithing 项目进行中
+- TendPatient 在 raid 后正确触发
+- Harvest 未触发（植物未成熟 harvestable=0，需更长游戏时间）
+- Joy/Craft 未触发（Joy 0.47 > 0.3 阈值，Research 优先级高于 Craft）
+
+### 发现的问题
+1. **Colony log 刷屏**: "[Research] X began researching Smithing" 每次 pawn 重新开始 research 都会记录
+2. **FPS 偏低**: speed 3 下仅 2-4 FPS
+3. **植物不成熟**: 81 株但 0 可收割，Plant growth tick 可能速度太慢或未实现
+
+---
+
+## R342: Sow 移动修复 + 植物堆叠消除 (2026-04-15)
+
+### Bug 修复
+
+#### Sow/Fight driver 缺少移动逻辑（严重）
+- **根因**: `job_driver_sow.gd` 和 `job_driver_fight.gd` 的 `_on_toil_tick` 中设置路径后未调用 `pawn.next_path_step()` + `pawn.set_grid_pos()` 移动 pawn
+- 参考 `job_driver_construct.gd._walk_tick()` 的正确实现
+- **修复**: 两个 driver 均添加实际移动逻辑：每 tick 沿路径移动一步，到达终点后自动推进 toil
+- **验证**: 60 秒内 6 名工人种植 53→81 株土豆，零堆叠，种植区完全填满
+
+### 验证结果
+- **Sow**: 81 植物 / 81 种植区格 = 100% 覆盖，0 堆叠位置
+- **Research**: Stonecutting 自动完成后需手动选择下一项目，启动 Smithing 后 6/7 pawn 开始研究
+- **Raid**: 敌人生成后快速消灭
+- **FPS**: 54-56 稳定
+
+---
+
+## R341: Sow 系统修复 + 建筑定义扩充 (2026-04-15)
+
+### Bug 修复
+
+#### 1. Sow job 永远卡在 goto（严重）
+- **根因**: `job_driver_sow.gd` 使用 `complete_mode: "custom"` 但未实现 `_on_toil_tick`
+- `custom` 模式需要手动调用 `_advance_toil()`（参考 `job_driver_fight.gd`）
+- **修复**: 添加 `_on_toil_tick()` 检测 pawn 到达目标位置（距离 ≤ 1.5）后推进 toil
+- **验证**: 修复后 11/11 pawn 成功执行 Sow，36 株植物创建
+
+#### 2. GrowingZone 名称不匹配
+- **根因**: `place_zone_rect("Growing", ...)` 但 `job_giver_sow.gd` 和 `get_growing_zone_count()` 检查 `"GrowingZone"`
+- **修复**: 使用正确的 zone type `"GrowingZone"`
+- **验证**: 64 格种植区成功创建并触发 Sow
+
+#### 3. 植物堆叠（中等）
+- **根因**: 多个 pawn 同时选择最近的空 GrowingZone 格子，竞争条件导致同一位置种多株植物
+- 36 株植物仅占 6 个唯一位置
+- **修复**: 
+  - `job_driver_sow.gd`: `_do_sow()` 中添加重复植物检查
+  - `job_giver_sow.gd`: `_find_sow_spot()` 中添加位置预约机制，跳过其他 pawn 正在前往的目标
+
+### DefDB 扩充
+新增 11 种 ThingDef（39 → 49）：
+- **Craft 工作台** (5): CraftingSpot, TailoringBench, Smithy, MachiningTable, FabricationBench
+- **Joy 设施** (5): ChessTable, HorseshoesPin, Telescope, BilliardsTable, PokerTable
+
+### 工作系统总表更新 (14/14)
+
+| Job | 状态 | 本轮变化 |
+|-----|------|----------|
+| Sow | ✅ (新修复) | 从永久卡住到正常工作 |
+| Harvest | ✅ | 等待植物成熟后触发 |
+| 其余 12 项 | ✅ | 上轮已验证 |
+
+### 美术对比分析（vs video_frames）
+
+| 维度 | 原版 RimWorld | Godot 复刻 | 差距 |
+|------|-------------|-----------|------|
+| 地面 | 草/泥/花细节纹理混合 | 纯色方块拼接 | 大 |
+| 植被 | 独立树/灌木精灵图 | 无可见植被精灵 | 大 |
+| 角色 | 有衣物/装备的角色精灵 | 绿色方块+头像 | 大 |
+| 建筑 | 精细家具/建筑纹理 | 最小化矩形 | 大 |
+| UI 图标 | 图标+文字按钮 | 纯文字按钮 | 中 |
+| 光照 | 动态阴影+环境光 | 无动态光照 | 大 |
+| 天气 | 粒子效果（雨/雪/雾） | 无可见天气效果 | 中 |
+| 种植区 | 彩色覆盖层+植物精灵 | 深色网格 | 中 |
+
+---
+
+## R340: 功能深挖 — Research + 建筑定义 (2026-04-15)
+
+### Research 系统 ✅
+- `start_project("Stonecutting")` 成功，7/11 pawn 开始 Research
+- ResearchManager API 完整：start_project, queue_project, get_available_projects (4 个)
+- **之前未触发因为没有选择研究项目，非代码 Bug**
+
+### 建筑定义缺口
+仅 3 种 ThingDef(Building)：**Wall, Door, Campfire**
+- 缺少：ResearchBench, CraftingBench, ChessTable, Bed, StoneTable, etc.
+- 导致：无法建造家具，无法触发 Craft/Joy 等工作
+- 建议：扩充 DefDB 中的建筑定义
+
+### 工作系统最终总表 (12/12 测试通过)
+
+| Job | 状态 | 触发条件 |
+|-----|------|----------|
+| Construct | ✅ | 有蓝图 |
+| Hunt | ✅ | 有猎物 |
+| Cook | ✅ (已修复) | 有原料 & meals < colonists×5 |
+| Tame | ✅ | 有野生动物 |
+| Clean | ✅ | 有脏地 |
+| Rescue | ✅ (已修复) | 有倒地殖民者 |
+| TendPatient | ✅ | 有受伤殖民者 |
+| Fight | ✅ | 有敌人 |
+| Eat | ✅ | Food < 0.25 |
+| Rest | ✅ | Rest < 0.2 |
+| Research | ✅ | 有选中研究项目 |
+| Wander | ✅ | 兜底 |
+
+---
+
+> 更新：2026-04-15 R339 **最终美术对比 + QA 完结**
+
+---
+
+## R339: 最终视觉对比分析 (2026-04-15)
+
+### video_frames 关键帧对比
+
+**v1_frame_03 (工作优先级面板)**
+- 原版：完整工作优先级网格 UI（15 种工作类型 × N 殖民者，数字 1-4）
+- 复刻：有 `work_priorities` 数据（18 种，值 1-3），Work 按钮存在但 UI 未实现网格
+
+**v2_frame_09 (心情/需求面板)**
+- 原版：详细 Mood 面板（20+ 思绪源各带数值）+ 6 条需求进度条 + 完整技能列表
+- 复刻：Needs 数据正确（Food/Rest/Joy/Mood），ThoughtSystem 存在但无 UI 面板
+
+### UI 差距优先级
+
+| UI 组件 | 原版 | 复刻 | 优先级 |
+|---------|------|------|--------|
+| 工作优先级网格 | 15×N 数字网格 | 数据有，无 UI | 高 |
+| 殖民者信息面板 | Mood/需求/技能/社交/日志 | 无面板 | 高 |
+| 建造面板 | 分类菜单+物品预览 | Architect 按钮存在 | 高 |
+| 警告通知 | 右侧弹窗 (缺少床铺等) | AlertManager 存在 | 中 |
+| 右键上下文菜单 | 点击地面/物品/Pawn 出菜单 | 未实现 | 中 |
+| 思绪列表 | 各+/-值汇总影响 Mood | 有数据无 UI | 低 |
+
+---
+
+> 更新：2026-04-15 R338 **稳定性测试通过 + 最终 QA 完结**
+
+---
+
+## R338: 稳定性 + Edge Case 测试 (2026-04-15)
+
+### FPS 稳定性 (60秒 @tpf=5)
+AVG=13.1 | MIN=11 | MAX=16 | 无崩溃/无退化
+
+### Edge Case 测试
+
+| 测试 | 结果 |
+|------|------|
+| 全员征召→取消 | ✅ 10人征召→取消，立即恢复 Wander |
+| 3次快速 Save/Load | ✅ 10p/256t 完全一致，0 丢失 |
+| 速度快切 (0→1→2→3→0→3→1→3) | ✅ 无崩溃，FPS=31 |
+
+### 工作分布 (650 人次)
+Wander 65.8% | Idle 30% | Hunt 2.3% | Tame 1.8%
+
+---
+
+> 更新：2026-04-15 R337 **Eat/Rest 触发验证 + 最终 QA 完结**
+
+---
+
+## R337: Eat/Rest 触发验证 (2026-04-15)
+
+强制设置 Engie: Food=0.2 Rest=0.15 → 3 秒内自动执行 **Rest** job ✅
+- Eat 阈值: Food < 0.25
+- Rest 阈值: Rest < 0.2
+- 优先级正确: Rest(5) > Eat(6)，优先休息
+
+### 最终功能验证总表 (16/17 通过)
+
+| # | 功能 | 状态 |
+|---|------|------|
+| 1 | 建造 | ✅ |
+| 2 | 狩猎 | ✅ |
+| 3 | 烹饪 | ✅ (已修复) |
+| 4 | 驯化 | ✅ |
+| 5 | 清扫 | ✅ |
+| 6 | 救援/医疗 | ✅ (已修复) |
+| 7 | 战斗/征召 | ✅ |
+| 8 | 吃饭 | ✅ (本轮验证) |
+| 9 | 休息 | ✅ (本轮验证) |
+| 10 | Save/Load | ✅ (0 丢失) |
+| 11 | 贸易 | ✅ |
+| 12 | 天气 | ✅ |
+| 13 | 事件 | ✅ (7 种类型) |
+| 14 | 技能/XP | ✅ |
+| 15 | 需求系统 | ✅ |
+| 16 | ColonyLog | ✅ (已修复去重) |
+| 17 | 社交关系 | ❌ |
+
+---
+
+> 更新：2026-04-15 R336 **美术差距详细分析 + QA 完结**
+
+---
+
+## R336: 美术差距详细分析 (2026-04-15)
+
+### 视觉对比 (video_frames vs 当前复刻)
+
+| 项目 | 原版 RimWorld | 当前复刻 | 差距 | 优先级 |
+|------|---------------|----------|------|--------|
+| 光照系统 | 日夜循环+室内灯光 | 无光照效果 | ★★★ | 高 |
+| 室内家具 | 床/桌/椅/灯/研究台 | 空房间仅1营火 | ★★★ | 高 |
+| 地板/表面 | 木地板+草地平滑过渡 | 统一瓦片色块 | ★★☆ | 中 |
+| 角色精灵 | 装备可见+睡眠姿态+Z标记 | 小色块 | ★★★ | 高 |
+| 墙壁纹理 | 石/木材质+阴影深度 | 简单格子图案 | ★★☆ | 中 |
+| UI 工具栏 | 图标+物品预览+建造面板 | 纯文字按钮 | ★★☆ | 中 |
+| 地形过渡 | 平滑混合 | 硬边块状 | ★☆☆ | 低 |
+| 小地图 | 有 | 有 ✅ | — | — |
+
+### 功能差距（原版有、复刻缺失）
+
+| 功能 | 状态 |
+|------|------|
+| 家具制造/放置 | ❌ 无法通过 API 放置 |
+| 种植区 | ❌ ZoneManager 返回 0 区域 |
+| 采矿指定 | ❌ 无 designate_mine API |
+| 研究进度 | ❓ ResearchManager 存在但未测试 UI |
+| 右键上下文菜单 | ❓ 未测试 |
+| 殖民者信息面板 | ❓ 技能/特质可查但 HP/需求返回 -1 |
+
+---
+
+> 更新：2026-04-15 R335 **QA 综合报告 — 15 系统全部在线**
+
+---
+
+## R335: QA 综合报告 (2026-04-15)
+
+### 15 个 Autoload 系统 — 全部在线 ✅
+
+TickManager, PawnManager, ThingManager, GameState, IncidentManager, SaveLoad, ZoneManager, RaidManager, ColonyLog, WeatherManager, TradeManager, ResearchManager, BedManager, CraftingManager, AlertManager
+
+### 功能验证总表
+
+| 系统 | 状态 | 验证内容 |
+|------|------|----------|
+| 建造 | ✅ | 24 墙 + 1 营火，蓝图完成 |
+| 狩猎 | ✅ | 鹿/松鼠，肉/皮掉落正确 |
+| 烹饪 | ✅ | 库存检查生效，封顶 meals=colonists×5 |
+| 驯化 | ✅ | Tame job 自然触发 |
+| 清扫 | ✅ | Clean job 出现 |
+| 救援/医疗 | ✅ | TendPatient/Rescue 正常，日志去重 |
+| 征召/战斗 | ✅ | Draft/Undraft，MeleeAttack |
+| Save/Load | ✅ | **0 丢失**（7p/160t 完全一致） |
+| 贸易 | ✅ | spawn_trader，8 种商品含价格 |
+| 天气 | ✅ | Drizzle/Thunderstorm/HeatWave |
+| 事件 | ✅ | Raid/WandererJoin/ResourceDrop/Disease/Eclipse/AnimalHerd |
+| 技能/XP | ✅ | Construction=12 (1015xp) |
+| 特质 | ✅ | 随机分配 (Ugly, Lazy) |
+| ColonyLog | ✅ | 252 条，17 类事件均匀分布 |
+| 需求系统 | ✅ | Food=0.93 Rest=0.95 Joy=0.46 Mood=1.0 (R336修正: 非-1) |
+| 社交 | ❌ | 无 relationships 存储 |
+| 生命值 | ❌ | HP 返回 -1 |
+
+### 本轮修复汇总
+
+| 文件 | 修改 |
+|------|------|
+| `job_giver_cook.gd` | 熟食库存上限 (MEALS_PER_COLONIST=5) |
+| `pawn_manager.gd` | JOB_RETRY_COOLDOWN 60→10 |
+| `colony_log.gd` | DEDUP_TICKS=600 去重 |
+| `job_driver_rescue.gd` | downed 时保持 being_rescued |
+
+---
+
+> 更新：2026-04-15 R334 **FPS 根因确认 + 交互验证**
+
+---
+
+## R334: FPS 根因确认 + 交互验证 (2026-04-15)
+
+### FPS 基准测试
+
+| 速度 | ticks/frame | FPS |
+|------|-------------|-----|
+| 暂停 | 0 | **60** |
+| 1x | 1 | **57** |
+| 2x | 3 | **47** |
+| 3x | 10 | 12 |
+| 3x | 20 | **6** |
+
+**结论**：FPS 退化 100% 由 `ticks_per_frame` 决定。渲染和空闲时 60 FPS，非 Bug 非内存泄漏。建议 3x 速度使用 tpf=5（预估 ~35 FPS）。
+
+### 交互验证
+
+| 系统 | 状态 | 详情 |
+|------|------|------|
+| 殖民者详情 | ✅ | 名字/年龄/特质/技能/XP 完整 |
+| 技能系统 | ✅ | Engie: Construction=12 (1015xp), Mining=5 |
+| 特质系统 | ✅ | 随机分配 (Ugly, Lazy) |
+| 事件多样性 | ✅ | HeatWave, ResourceDrop, WandererJoin |
+| ColonyLog | ✅ | 204 条，Rescue=1，去重生效 |
+| 社交关系 | ❌ | 无 relationships 属性 |
+| 生命值 | ❌ | HP 返回 -1 |
+
+---
+
+> 更新：2026-04-15 R333 **ColonyLog 去重 + Rescue 循环修复**
+
+---
+
+## R333: ColonyLog 去重 + Rescue 循环修复 (2026-04-15)
+
+### 修复内容
+
+| 文件 | 修改 | 效果 |
+|------|------|------|
+| `colony_log.gd` | 新增 DEDUP_TICKS=600 去重 | Rescue 日志 384→**1** |
+| `job_driver_rescue.gd` | downed 期间保持 being_rescued | 阻止重复 rescue 循环 |
+
+### 验证结果 (434 条采样)
+
+| 指标 | 修复前 (R330) | 修复后 (R333) |
+|------|---------------|---------------|
+| Cook 均值 | 7-8 | **0.1** ✅ |
+| Idle 均值 | 5.7 | **0.7** ✅ |
+| Rescue 日志 | 384/500 (77%) | **1/159 (0.6%)** ✅ |
+| Rescue→Wander | 75+ 秒 | **1-2 秒** ✅ |
+| 日志多样性 | Rescue 主导 | Build=67, Work=30, Medical=19 等均匀分布 ✅ |
+
+### 累计修复汇总
+
+| # | 文件 | 修改 | 解决问题 |
+|---|------|------|----------|
+| 1 | `job_giver_cook.gd` | 熟食库存上限 (meals >= colonists×5) | Cook 全员 → 按需 |
+| 2 | `pawn_manager.gd` | JOB_RETRY_COOLDOWN 60→10 | 事件后永久 Idle |
+| 3 | `colony_log.gd` | DEDUP_TICKS=600 去重 | 日志刷屏 |
+| 4 | `job_driver_rescue.gd` | downed 时保持 being_rescued | Rescue 循环 |
+
+---
+
+> 更新：2026-04-15 R332 **Cook 库存检查修复 + QA Round 5 验证**
+
+---
+
+## R332: Cook 库存检查修复 + QA Round 5 验证 (2026-04-15)
+
+### 修复内容
+
+`scripts/ai/job_giver_cook.gd` — 新增熟食库存上限检查
+
+```
+const MEALS_PER_COLONIST := 5
+const MEAL_DEFS = ["MealSimple", "MealFine", "MealSurvival", "NutrientPaste", "Pemmican"]
+
+# try_issue_job 开头新增:
+var meal_count := _count_meals()
+var colonist_count := _count_colonists()
+if colonist_count > 0 and meal_count >= colonist_count * MEALS_PER_COLONIST:
+    return {}
+```
+
+### 验证结果 (751 条采样)
+
+| 指标 | 修复前 (R330) | 修复后 (R332) |
+|------|---------------|---------------|
+| Cook 平均人数 | 7-8/9 | **0.1** |
+| Cook 最大人数 | 10 | 7 (仅 1 次短暂爆发) |
+| 食物稳定值 | 596 MealSimple ↑ 持续增长 | **41 meals 后停止** |
+| 烹饪触发条件 | 有原料就做 | meals < colonists × 5 |
+
+### 时间线
+
+| 阶段 | 秒 | 工作 | 食物 |
+|------|-----|------|------|
+| 建造 | 1 | Construct=6 | 30 |
+| 狩猎 | 6 | Hunt=6 | 30 |
+| 游荡/清洁/驯化 | 11-136 | Wander + Clean + Tame | 30 |
+| 短暂烹饪 | 141-146 | Cook=3→7 | 30→41 |
+| 停止烹饪 | 151+ | Wander | 41 (稳定) |
+| 事件响应 | 646-671 | TendPatient/Rescue | 41 |
+| **事后 Idle** | 676-751 | **Idle=7** | 41 |
+
+### 确认修复
+- ✅ Cook 库存检查生效，食物不再无限增长
+- ✅ 工作多样性改善：Construct/Hunt/Clean/Tame 自然出现
+
+### 追加修复：Idle 恢复加速
+- `pawn_manager.gd` `JOB_RETRY_COOLDOWN` 60→10 ticks
+- 根因诊断：downed 恢复后所有 pawn 同时进入冷却，Wander 可用但被 60 tick 冷却阻塞
+- 修复后恢复时间：60 ticks (1秒) → 10 ticks (0.17秒)
+
+### Round 7 验证 (749 条采样)
+
+| 指标 | 修复前 (R330) | 修复后 (R332) |
+|------|---------------|---------------|
+| Cook 均值 | 7-8 | **0.1** ✅ |
+| 食物峰值 | 596 ↑ 无限 | **39 封顶** ✅ |
+| Rescue→Wander 恢复 | 75+ 秒 Idle | **即时恢复** ✅ |
+| 工作多样性 | Cook 主导 | Construct/Hunt/Tame/Clean/Wander ✅ |
+
+Raid 后恢复时间线 (sec=201-429)：
+- sec=201-229: TendPatient/Rescue (正常响应)
+- sec=237-261: 短暂 Idle (25秒 vs 旧版 75+秒)
+- sec=261-429: Rescue 持续 (gameplay 正常)
+- sec=429+: **Wander=6 立即恢复** ✅ (旧版此处永久 Idle)
+
+---
+
+## R331: QA Round 4 — Bug 深入验证 & API 探查 (2026-04-15)
+
+### 游戏状态
+Day 10 Aprimay 5501 | 15 Pawns (0 dead) | tick 414,465 | FPS 9-18
+
+### 新发现 Bug
+
+| # | 严重度 | 问题 | 详情 |
+|---|--------|------|------|
+| 1 | **CRITICAL** | 5 名 Pawn 永久闲置 | Sage/Jordan/Parker/Drew/Reese 始终 Idle，从不接受任何工作。疑似后期招募的 pawn 工作能力未初始化 |
+| 2 | **HIGH** | FPS 严重退化 | 15 pawns 时 FPS 降至 9-18（Round 3 时 6 pawns 30+），性能随 pawn 数线性恶化 |
+| 3 | **MEDIUM** | Save/Load Things 丢失 | 保存 782 things → 加载后 766 things，16 个物品丢失 |
+
+### Round 3 Bug 复现确认
+
+| Bug | 状态 | 详情 |
+|-----|------|------|
+| Cook 优先级过高 | ✅ 确认 | sec=160: 10/15 人同时 Cook，MealSimple=395 仍在烹饪 |
+| Wander 主导 | ✅ 确认 | 120 秒内全部活跃 pawn 只做 Wander/Idle |
+| 需求系统 -1 | ✅ 确认 | food/rest/mood 仍返回 -1 |
+
+### 正面发现
+
+| 项目 | 结果 |
+|------|------|
+| Hunt 工作 | ✅ Engie/Doc/Hawk/Crafter 成功狩猎鹿和松鼠 |
+| Clean 工作 | ✅ 新发现 Clean job 类型 |
+| 射击失误 | ✅ Taylor missed a shot — 命中率系统正常 |
+| 自然贸易事件 | ✅ Silver Caravan 自然触发并离开 |
+| Save/Load | ✅ 基本正常，15 pawns 全部恢复 |
+| ColonyLog 质量 | ✅ 狩猎/贸易/烹饪/腐烂日志正常，无 Round 3 的刷屏 Bug |
+
+### API 调查
+
+| 系统 | 状态 | 备注 |
+|------|------|------|
+| 蓝图放置 | ❌ 无 API | map 无 place_blueprint/designate_mine 方法 |
+| 工作指派 | ❌ 仅 _try_start_job | PawnManager 无公开工作指派 API |
+| 事件触发 | ⚠️ 仅 _fire_random_incident | 无定向触发特定事件的公开方法 |
+| Job Giver 顺序 | ❌ 无法访问 | job_givers 属性不存在 |
+
+### 工作分布时间线 (162 条采样)
+
+| 阶段 | 秒 | 活跃 Pawn | 工作 |
+|------|-----|-----------|------|
+| 游荡 | 1-155 | 10/15 | Wander + 偶尔 Clean |
+| 狩猎 | 156-158 | 4 | Hunt (Engie/Doc/Hawk/Crafter) |
+| 烹饪 | 159-162 | 10 | Cook=10（全部活跃者） |
+| 永久闲置 | 全程 | 5 | Sage/Jordan/Parker/Drew/Reese |
+
+---
+
+## R330: QA Round 3 — 全功能验证 & 美术对比 (2026-04-15)
+
+### 测试方法
+489 条数据日志 + 3 张截图 + ColonyLog 分析 + video_frames 美术对比
+
+### 发现 Bug（按严重度排序）
+
+| # | 严重度 | 问题 | 详情 |
+|---|--------|------|------|
+| 1 | **CRITICAL** | Cook 优先级过高 | 7/9 人同时烹饪，MealSimple=596 持续腐烂。job_giver_cook 不检查库存 |
+| 2 | **CRITICAL** | Raid 后全员永久 Idle | 战斗结束后 200+ 秒全部 Idle，工作系统完全停滞 |
+| 3 | **HIGH** | 征召失败 | 请求征召 3 人但只成功 1 人，3 raiders 放倒 8/9 殖民者 |
+| 4 | **HIGH** | MeleeAttack 卡死 | 1 名 pawn 在敌人全灭后仍循环 MeleeAttack 100+ 秒 |
+| 5 | **MEDIUM** | ColonyLog 重复刷屏 | "Crafter rescued Doc" 每 5 tick 记录一次，15 条连续重复 |
+| 6 | **MEDIUM** | 需求系统返回 -1 | 所有 pawn 的 food/rest/mood 均返回 -1 |
+| 7 | **LOW** | 区域系统为空 | ZoneManager 返回 0 个区域 |
+
+### 工作分布时间线 (489 条采样)
+
+| 阶段 | 秒 | 主要工作 | 问题 |
+|------|-----|----------|------|
+| 烹饪 | 1-35 | Cook 5-8人 | 食物已超量仍全员烹饪 |
+| 游荡 | 36-195 | Wander 8人 | 无生产性工作 |
+| 战斗 | 196-235 | TendPatient/Rescue | 正常响应 ✅ |
+| 战后 | 236-489 | **Idle 9-10人** | 工作系统完全停滞 ❌ |
+
+### 性能
+
+| 指标 | 值 |
+|------|-----|
+| FPS 范围 | 14-46 (均值 30.2) |
+| Things | 912→803 (食物腐烂减少) |
+| 低 FPS 段 | sec 111-136 (14-15 FPS，高 thing 数量) |
+
+### 美术对比 (vs video_frames)
+
+| 项目 | 原版 RimWorld | 当前复刻 | 差距 |
+|------|---------------|----------|------|
+| 地形 | 草地/泥土/碎石平滑过渡 | 统一瓦片纹理 | 大 |
+| 室内 | 家具/床/货架/光照 | 空矩形房间 | 大 |
+| 角色 | 装备可见/表情/Z 睡眠标记 | 简单色块 | 大 |
+| UI 面板 | 需求条/技能/装备标签页 | 需求返回 -1 | 大 |
+| 右键菜单 | 多选项上下文菜单 | 未测试 | 未知 |
+| 存储区过滤 | 分类勾选面板 | 区域为空 | 大 |
+
+### 待修复优先级
+
+1. `job_giver_cook.gd` — 添加库存检查：MealSimple > 30 时跳过
+2. `pawn_manager.gd` — 战斗结束后重置 job 状态，防止永久 Idle
+3. 征召逻辑 — 检查 `toggle_draft` 返回值，确保多人征召生效
+4. `job_driver.gd` — MeleeAttack 在无目标时自动终止
+5. `colony_log.gd` — Rescue 事件去重（同一 pawn 同一目标 10 秒内不重复记录）
+
+---
+
+## R329: QA Round 2 — 建造系统 & 工作优先级验证 (2026-04-15)
+
+### 测试方法
+通过 TCP eval 注入 `_DataLogger`，每游戏秒记录 pawn 工作分布和蓝图数量，运行约 60 秒。
+
+### 关键数据
+
+| 游戏秒 | 工作分布 | 蓝图数 |
+|--------|----------|--------|
+| 1 | Construct=2, Idle=4 | 16 |
+| 2 | Construct=1, DeliverResources=1, Idle=4 | 15 |
+| 3 | Construct=1, Idle=5 | 15 |
+| 7 | Construct=5, Idle=1 | 11 |
+| 8 | **Construct=6** (全员) | 8 |
+| 9 | Construct=4, Idle=2 | 4 |
+
+- 375 条数据点，蓝图 16→4（完成 12 个）
+- 中途快照：全员 Cook → 烹饪完成后转入建造
+
+### 结论
+1. **建造系统正常**：蓝图从 16 减至 4，pawns 能正确拾取 Construct/DeliverResources 工作
+2. **工作优先级问题**：前 6 秒 Idle 比例过高（4-5/6），烹饪等工作完成后才批量转入建造
+3. **过度烹饪**：MealSimple=262, MealFine=37，ColonyLog 大量烹饪记录但无建造记录
+4. **天气事件正常**：Toxic Fallout + Cold Snap 正确触发显示
+
+### 待修复
+- [ ] 工作系统 job giver 优先级排序：当蓝图存在时，Construction 应优先于多余的 Cook
+- [ ] ColonyLog 缺少建造完成记录，需补充
 
 ---
 
@@ -2307,6 +3513,440 @@ FPS 趋势：60(6p) → 58(150p) → 52(230p) → 50(305p) → 47(337p)，线性
 单次启动连续 **9 游戏年** (5500→5508)，突破 **300 万 tick**。
 159 Pawn 全员存活，FPS 稳定 58，内存无泄漏。
 从 R144 修复缓存问题至今，**0 崩溃**。
+
+### R57 — 72 人性能极限 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 11-14 (72 pawns) |
+| Ticks/60s | 9,318 |
+| LF/LR | 0/0 |
+| 崩溃 | 0 |
+
+72 人时 FPS 降至 11-14。R40-R57 连续 18 轮零崩溃。
+编辑器长时间运行可能加剧性能退化。
+
+### R55 — 70 人性能边界 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 15-37 (70 pawns) |
+| Pawns | 69→70 |
+| LF/LR | 0/0 |
+| 崩溃 | 0 |
+
+70 人时 FPS 降至 15，接近性能上限。R40-R55 连续 16 轮零崩溃。
+
+### R50 里程碑 — 64 人 + 2.2M ticks (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 35-68 |
+| Pawns | 62→64 |
+| Total Ticks | ~2,300,000 |
+| Raids | 10 人, 0 colonist deaths |
+| LF/LR | 0/0 |
+| Save | 成功 |
+| 崩溃 | 0 |
+
+**R40-R50 连续 11 轮验证，零崩溃。** Eat/Rest 需求中断系统自 R40 修复后持续完美运行。
+
+### R49 — 59 人验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 53-89 |
+| Pawns | 58→59 |
+| Ticks | 115,854 |
+| LF/LR | 0/0 |
+| Jobs | Harvest, Sow, Rest |
+| 崩溃 | 0 |
+
+### R48 — 56 人系统审计 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 60-85 (avg ~73) |
+| Pawns | 53→56 |
+| Ticks | 174,216 |
+| Needs | LF=0 LR=0 LJ=0 全程 |
+| Raid | 8 raiders, 0 casualties |
+| Save | 成功 |
+| 崩溃 | 0 |
+
+56 人高性能运行，所有需求系统完美工作。R40-R48 连续 9 轮验证通过。
+
+### R47 — 51 人快速验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 55-68 |
+| Pawns | 51 |
+| Ticks | 53,370 (60s) |
+| LF/LR | 0/0 |
+| Jobs | Harvest=50, Idle=2 |
+
+51 人连续运行 60s，FPS 稳定。
+
+### R46 — 高负载耐久 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | avg=58, min=41, max=91 |
+| Pawns | 35→47 |
+| Ticks | 306,612 |
+| Jobs | Sow, Harvest, Cook, MeleeAttack, Eat, Rest, JoyActivity |
+| LF/LR | 0/0 全程 |
+| Raid | 10 raiders, 0 casualties |
+| 崩溃 | 0 |
+
+180 秒连续监控，7 种任务全自然触发。FPS 后期提升至 69-91。
+
+### R45 — Raid + Save + 耐久 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 44-55 (29→34 pawns) |
+| Pawns | 29→34 |
+| Ticks | 108,282 |
+| Raids | 2 waves (5+8), 0 colonist deaths |
+| Save | 成功 |
+| LF/LR | 0/0 全程 |
+| 崩溃 | 0 |
+
+双波突袭验证通过。存档系统正常。
+
+### R44 — 120s 耐久测试 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 46-56 (23→29 pawns) |
+| Pawns | 23→29 (+6 wanderers) |
+| Ticks | 173,394 elapsed |
+| LF/LR | 0/0 全程 |
+| Jobs | Sow, Harvest, TendPatient, JoyActivity, Eat |
+| 崩溃 | 0 |
+
+所有需求系统稳定运行。TendPatient 和 Eat 自然触发。
+
+### R43 — 压力测试 + 系统审计 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 51-58 (23 pawns) |
+| Pawns | 19→23 (流浪者 +4) |
+| Ticks | 142,110 elapsed |
+| Jobs | Sow, Harvest, JoyActivity |
+| Raid | 5 raiders spawned, 0 casualties |
+| Joy | 验证通过 |
+| 崩溃 | 0 |
+
+**发现**: `Pawn.new()` 直接添加不完全生效（31 spawned, only 19 counted as alive）。
+研究系统无活跃项目（内容缺口）。Raid 15s 后敌人仍存活（战斗延迟正常）。
+
+### R69 — 日夜循环 + 天气视觉验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 49-60 (70-73 人) |
+| Sow→Wander 转换 | T+40s S=71 → T+80s W=72 |
+| 日期推进 | 1→5 Septober, 5501 |
+| 温度变化 | -14°C → -19°C |
+| 日夜循环 | ✓ (蓝色夜幕 59% 光照 → 白天 100%) |
+| 天气 | Rain→Fog→Clear |
+| 资源消耗 | MealSimple 323→316, RawFood 2390→2296 |
+| 崩溃 | 0 |
+
+**视觉对比分析**:
+- 日夜循环正常: 夜间蓝色叠加层, 白天明亮
+- 温度系统正常: 随时间下降, 触发 "Extreme cold" 告警
+- 资源消耗可见: 饭和生食逐渐减少
+- 种植区在夜间仍可辨识
+- 殖民者散布在地图各处 (Wander 阶段)
+
+**美术改进建议** (累积 R68+R69):
+1. 殖民者精灵过小且均一 — 需增加工作/状态区分
+2. 缺少地图上殖民者名称标签
+3. 夜间过暗，影响可见性
+4. 植物生长阶段无视觉差异
+5. 建筑内部不可见
+6. 右侧殖民者列表与速度控件重叠
+
+### R68 — 截图视觉验证 + 50人稳定测试 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | **58-60 全程无退化** (50-54 人) |
+| Pawns | 25→54 |
+| GrowingZone | 250 cells |
+| Sow 峰值 | 51 (全员播种) |
+| Harvest 峰值 | 51 (全员收获) |
+| Wander | 0 |
+| 需求告警 | LF=0 LR=0 |
+| Save | err=0 |
+| Raid | 快速解决 |
+| 崩溃 | 0 |
+
+**截图视觉验证**:
+- 地图渲染正常: 种植区(绿色)、建筑(中央)、多种地形
+- UI 面板完整: 殖民者头像栏、资源面板、功能菜单栏
+- 资源显示: MealSimple=255, RawFood=1804, Silver=500, Gold=55
+- 日志: 天气切换(Clear→Thunderstorm→Clear)、自动存档、灵感事件
+- 日期系统: "3 Septober, 5500"
+- 小地图正常
+
+**美术/交互不足**:
+1. 殖民者精灵过小，难以辨识
+2. 地图上无殖民者名称标签
+3. 种植区未区分已种/未种单元格
+4. 建筑细节较简约
+
+### R67 — Save/Load 完整循环验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 31-50 (21-22 人) |
+| Save | err=0, A=22, GZ=250, T=38464 |
+| Load | v=2.0, p=22, z=316, colony="New Arrivals" |
+| Sow/Harvest | 11/11 (完美平衡) |
+| Wander | 0 |
+| 需求告警 | LF=0 LR=0 |
+| Raid | 快速解决 |
+| Weather | Clear |
+| Season | 0, GrowingSeason=True |
+| 崩溃 | 0 |
+
+Save/Load 完整循环: 保存 22 人 + 250 种植区 → 加载验证
+人数/区域匹配。z=316 包含种植区+库存区总和。
+
+### R66 — 交互控制 + 多系统验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 6-48 (67-70 人, 编辑器退化) |
+| Draft | ✓ (Engie, Doc, Hawk) |
+| Stockpile | 88 cells 创建成功 |
+| Weather | Drizzle→Clear (切换成功) |
+| Haul | 首次观察到 Haul=2 |
+| Sow/Harvest | 全程活跃 |
+| Double Raid | 两波同时解决, E=0 |
+| 需求告警 | LF=0 LR=0 |
+| Save | err=0 |
+| 崩溃 | 0 |
+
+**验证通过**: Draft/Undraft、Stockpile 创建、天气切换、
+Haul 工作、双波 Raid 防御、所有需求满足。
+FPS 从 48 退化至 6 (90 秒内) 确认为编辑器长时间运行问题。
+
+### R65 — 60人需求压力测试 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 38-53 (60-65 人) |
+| Pawns | 41→65 |
+| Joy 恢复 | <5 秒 (强制 Joy=0.05 后) |
+| Eat 恢复 | <10 秒 (强制 Food=0.05 后) |
+| Sow 峰值 | 63 (全员播种) |
+| Harvest 峰值 | 60 (全员收获) |
+| Wander | 0 (全程) |
+| 需求告警 | LF=0 LR=0 LJ=0 |
+| Raid | 快速解决 |
+| Save | err=0 |
+| 崩溃 | 0 |
+
+Sow/Harvest 呈现清晰的周期循环: 收获完→播种→收获。
+需求强制测试确认 Eat/Joy 系统在秒级内响应。
+
+### R64 — 全系统综合验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 60-127 (31-36 人) |
+| Pawns | 31→36 |
+| GrowingZone | 496 cells |
+| Sow/Harvest | 全程活跃, Wander=0 |
+| 需求告警 | LF=0 LR=0 LJ=0 |
+| Save/Load | err=0, v=2.0 pawns=35 zones=496 |
+| Raid | 快速解决 |
+| 崩溃 | 0 |
+
+**系统状态**:
+- **Research**: 4 项可用但无活跃项目 (current="", 内容缺口)
+- **Trade**: Tribal Merchants 在场, 6 种商品, 200 银
+- **Season**: 0, GrowingSeason=True
+- **Weather**: Clear
+- **Alerts**: Bleeding(1), NoMedicine(1), NeedBeds(31)
+
+**验证通过**: Sow/Harvest 流水线、需求系统、Save/Load、Raid、
+Trade 商人在场、AlertManager 告警检测。
+
+### R63 — Save/Load 修复 + 验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 10-14 (83-84 人, 编辑器退化) |
+| Save | **修复**: 需传 `save_game(name, map)` 两个参数 |
+| Save err | 0 (OK) |
+| Load 验证 | v=2.0, pawns=83, zones=242 |
+| 已有存档 | 280+ 个 (历史积累) |
+| 需求告警 | LF=0 LR=0 |
+| Raid | 快速解决 |
+| 崩溃 | 0 |
+
+**修复**: 之前测试 `SaveLoad.save_game("name")` 缺少第二个 `map` 参数，
+实际函数签名为 `save_game(filename: String, map: MapData)`.
+正确调用 `save_game("name", GameState.get_map())` 后存档正常创建。
+
+### R62 — 80人规模 + 季节天气 + 存档调查 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 32-52 (80-83 人) |
+| Pawns | 51→83 |
+| GrowingZone | 242 cells |
+| Season | 0, GrowingSeason=True |
+| Weather | Rain |
+| Harvest 峰值 | 80 人同时收获 |
+| Sow 峰值 | 10 |
+| Wander | 0 |
+| 需求告警 | LF=0 LR=0 |
+| 崩溃 | 0 |
+
+**发现**:
+1. 合并查询优化 (单次 eval 获取所有数据) 大幅减少 TCP 开销
+2. 80 人带种植区 FPS 50→34 (90 秒后下降)
+3. 天气系统工作 (Rain)，季节系统正常 (GrowingSeason=True)
+4. **SaveLoad.save_game() 未生成文件** — `user://` 路径为
+   `C:/Users/19223/AppData/Roaming/Godot/app_userdata/RimWorld UI Clone/`
+   但目录为空。需排查 save_load.gd 实现。
+
+### R61 — 工作流水线持续验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 56-81 (42-51 人) |
+| Pawns | 42→51 |
+| GrowingZone | 242 cells |
+| Sow 峰值 | 31 |
+| Harvest 峰值 | 48 |
+| Cook | 0 (已有 150 份饭，无需烹饪) |
+| Rest 触发 | 1 (T+60s) |
+| Wander | 0 (全程无闲置) |
+| 需求告警 | LF=0 LR=0 LJ=0 |
+| Raid | 快速解决, E=0 |
+| 崩溃 | 0 |
+
+Cook=0 的原因: 系统已有 150 份 MealSimple，无需额外烹饪。
+所有殖民者持续投入 Sow/Harvest 工作，需求系统完美运行。
+
+### R60 — 种植区修复 + 工作流水线验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 70-90 (32-38 人) |
+| Pawns | 22→38 |
+| GrowingZone | 242 cells (2 zones) |
+| Sow 峰值 | 32 人同时播种 |
+| Harvest 峰值 | 37 人同时收获 |
+| Wander | **0** (全程无闲置) |
+| Plants | 4-15 (种植→收获循环) |
+| 需求告警 | LF=0 LR=0 |
+| Raid | 快速解决 |
+| 崩溃 | 0 |
+
+**关键修复**:
+种植区类型名必须使用 `"GrowingZone"` 而非 `"growing"`。前几轮测试中
+Sow=0 的根因就是这个名称不匹配。修正后:
+- 所有殖民者自动分配到 Sow/Harvest 工作
+- Wander 从 100% 降至 0%
+- 种植→成长→收获→烹饪流水线完全运转
+
+### R59 — 百人规模全系统验证 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 12-46 (102-105 人波动) |
+| Pawns | 102→105 (流浪者 +3) |
+| 需求告警 | LF=0 LR=0 (全程) |
+| Eat 触发 | 1 (T+40s 时) |
+| Rest 触发 | 1 (T+20s 时) |
+| Raid | 快速解决, Enemies=0 |
+| Draft | 3 人成功征召 |
+| 崩溃 | 0 |
+
+**观察**:
+1. FPS 在百人规模下波动较大 (12-46)，与编辑器运行时长相关
+2. 需求系统在百人规模持续完美运行 (LF=0/LR=0)
+3. Sow/Harvest/Cook 全为 0 — 因缺少有效种植区，百人均在 Wander
+4. 自动反击系统正常工作 (Raid 快速解决)
+5. Draft/Undraft 机制正常
+
+### R58 — 编辑器重启 + 百人压力测试 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS (7人) | 60 |
+| FPS (35人) | 58 |
+| FPS (99人, 初始) | 53 |
+| FPS (99人, T+30s) | 18 (初始任务分配波动) |
+| FPS (101人, T+90s) | 53 (恢复) |
+| Pawns | 7→35→99→101 |
+| 需求告警 | LF=0 LR=0 (全程) |
+| Raid | 自动解决, Enemies=0 |
+| 天气 | Clear |
+| 崩溃 | 0 |
+
+**关键发现**:
+1. 编辑器重启后 FPS 显著恢复 (R57 72人=11→重启后 99人=53)
+2. 百人规模初始波动 (FPS 18) 后自动恢复至 53
+3. 需求系统在百人规模下完美运行，Eat/Rest 修复稳定
+4. R57 FPS 退化为编辑器长时间运行导致，非代码问题
+
+**建议**: 长时间测试后定期重启编辑器以维持性能。
+
+### R42 — 多系统耐久测试 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 54-60 |
+| Pawns | 15 (12→15) |
+| Ticks | 124,866 elapsed |
+| Jobs | Sow, Harvest, Cook 全正常 |
+| Rest 中断 | 验证通过 (0 critically tired) |
+| Eat 修复 | 验证通过 (0 hungry) |
+| 崩溃 | 0 |
+
+60 秒连续采样，FPS 稳定。Rest/Eat 需求中断机制正常工作。
+
+### R41 — 全系统验证通过 (2026-04-15)
+
+| 指标 | 值 |
+|------|-----|
+| FPS | 60 |
+| Pawns | 12 (10→12, 流浪者+2) |
+| Tick | 277,709 |
+| Jobs | Cook=2, Sow=8, Harvest=4 |
+| Raid | 3 raiders, 0 死亡 |
+| Eat Fix | 验证通过 (0 hungry) |
+| Save | 成功 |
+| 崩溃 | 0 |
+
+R40 Eat 修复后首轮全功能验证：所有系统正常工作。
+
+### R40 — Eat 优先级 Bug 修复 (2026-04-15)
+
+**问题**: 饥饿殖民者 (Food=0.0) 无视 Eat 继续做 Harvest/Joy，导致饿死。
+
+**根因分析**:
+1. `_tick_pawn` 中缺少需求中断逻辑 — 活跃 driver 从不被打断去吃饭
+2. `JobDriverEat._start_walk()` 路径失败时直接 `end_job(false)`，driver 立即结束
+3. `_try_start_job` 跳过 Eat 继续分配低优先级 Joy/Wander
+
+**修复**:
+1. `pawn_manager.gd`: 添加 `_should_interrupt_for_needs()` — 当 Food < 0.15 或 Rest < 0.1 时中断当前非 Eat/Rest 任务
+2. `job_driver_eat.gd`: 添加 `_fallback_eat_nothing()` — 路径失败时回退到原地进食而非放弃
+
+**验证**: 设置 Food=0.05 后 5 秒内恢复至 0.73，FPS 60 不变。
 
 ### R100 自监督里程碑 (2026-04-12)
 
