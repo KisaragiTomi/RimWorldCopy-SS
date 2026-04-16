@@ -1388,7 +1388,14 @@ func _try_render_item_sprite(item: Item, tx: int, ty: int) -> bool:
 		size_mult = 2.2
 	elif tex_name == "StoneBlocks":
 		size_mult = 2.5
-	var scale_f: float = float(CELL_SIZE) * size_mult / float(tex.get_width())
+	var stack_bonus: float = 1.0
+	if item.stack_count >= 50:
+		stack_bonus = 1.25
+	elif item.stack_count >= 20:
+		stack_bonus = 1.15
+	elif item.stack_count >= 5:
+		stack_bonus = 1.08
+	var scale_f: float = float(CELL_SIZE) * size_mult * stack_bonus / float(tex.get_width())
 	var world_pos := Vector2(tx * CELL_SIZE + CELL_SIZE * 0.5, ty * CELL_SIZE + CELL_SIZE * 0.5)
 	var shadow := Sprite2D.new()
 	shadow.texture = tex
@@ -2404,6 +2411,19 @@ func _update_pawn_indicators() -> void:
 		if not _pawn_sprites.has(p.id):
 			continue
 		var container: Node2D = _pawn_sprites[p.id]
+		if p.downed and not p.dead:
+			container.rotation = PI * 0.5
+			container.modulate = Color(0.8, 0.6, 0.6, 0.85)
+		elif p.dead:
+			container.rotation = PI * 0.5
+			container.modulate = Color(0.5, 0.5, 0.5, 0.5)
+		else:
+			container.rotation = 0.0
+			if p.drafted:
+				var draft_pulse: float = 0.85 + 0.15 * sin(Time.get_ticks_msec() * 0.005)
+				container.modulate = Color(1.0, draft_pulse, draft_pulse, 1.0)
+			else:
+				container.modulate = Color.WHITE
 		var ring: Sprite2D = container.get_node_or_null("SelectRing")
 		if ring:
 			ring.visible = (p.id == _selected_pawn_id)
