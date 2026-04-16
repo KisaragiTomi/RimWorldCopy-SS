@@ -87,10 +87,7 @@ func _finish_craft() -> void:
 		return
 
 	if ThingManager:
-		var item := Item.new(result.get("item", "Unknown"))
-		item.stack_count = result.get("count", 1)
-		item.grid_pos = pawn.grid_pos
-		ThingManager.spawn_thing(item, pawn.grid_pos)
+		ThingManager.spawn_item_stacks(result.get("item", "Unknown"), result.get("count", 1), pawn.grid_pos)
 
 	end_job(true)
 

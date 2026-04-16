@@ -115,5 +115,17 @@ func count_items(item_def: String) -> int:
 	return total
 
 
+func spawn_item_stacks(item_def: String, total_count: int, pos: Vector2i) -> void:
+	var max_stk: int = Item.new(item_def, 1).max_stack
+	if max_stk <= 0:
+		max_stk = 75
+	var remaining := total_count
+	while remaining > 0:
+		var count := mini(remaining, max_stk)
+		var item := Item.new(item_def, count)
+		spawn_thing(item, pos)
+		remaining -= count
+
+
 func _key(pos: Vector2i) -> String:
 	return "%d,%d" % [pos.x, pos.y]

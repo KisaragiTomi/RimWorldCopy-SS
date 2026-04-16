@@ -36,17 +36,17 @@ func _build_think_tree() -> void:
 	_think_tree.add_child_node(JobGiverRest.new())
 	_think_tree.add_child_node(JobGiverEat.new())
 	_think_tree.add_child_node(JobGiverJoy.new())
-	_think_tree.add_child_node(JobGiverConstruct.new())
-	_think_tree.add_child_node(JobGiverHaul.new())
-	_think_tree.add_child_node(JobGiverCook.new())
-	_think_tree.add_child_node(JobGiverSow.new())
-	_think_tree.add_child_node(JobGiverMine.new())
-	_think_tree.add_child_node(JobGiverHunt.new())
-	_think_tree.add_child_node(JobGiverChop.new())
-	_think_tree.add_child_node(JobGiverCraft.new())
-	_think_tree.add_child_node(JobGiverResearch.new())
+	_think_tree.add_child_node(JobGiverCook.new())       # order 70
+	_think_tree.add_child_node(JobGiverHunt.new())        # order 80
+	_think_tree.add_child_node(JobGiverConstruct.new())   # order 90
+	_think_tree.add_child_node(JobGiverSow.new())         # order 100 (Growing)
+	_think_tree.add_child_node(JobGiverMine.new())        # order 110
+	_think_tree.add_child_node(JobGiverChop.new())        # order 120
+	_think_tree.add_child_node(JobGiverCraft.new())       # order 150
+	_think_tree.add_child_node(JobGiverHaul.new())        # order 160
+	_think_tree.add_child_node(JobGiverClean.new())       # order 170
+	_think_tree.add_child_node(JobGiverResearch.new())    # order 180
 	_think_tree.add_child_node(JobGiverRepair.new())
-	_think_tree.add_child_node(JobGiverClean.new())
 	_think_tree.add_child_node(JobGiverTame.new())
 	_think_tree.add_child_node(JobGiverWander.new())
 

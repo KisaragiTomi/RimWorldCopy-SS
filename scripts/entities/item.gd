@@ -17,8 +17,8 @@ func _init(item_def: String = "", count: int = 1) -> void:
 	super._init()
 	def_name = item_def
 	label = item_def
-	stack_count = count
 	max_stack = _get_max_stack(item_def)
+	stack_count = mini(count, max_stack)
 	_apply_decay_properties()
 
 
@@ -37,11 +37,14 @@ func _get_max_stack(idef: String) -> int:
 func _apply_decay_properties() -> void:
 	var perishable: Dictionary = {
 		"RawFood": 0.005,
+		"Meat": 0.004,
 		"Meal": 0.002,
 		"MealSimple": 0.002,
 		"MealFine": 0.0015,
+		"NutrientPaste": 0.001,
 		"HerbalMedicine": 0.001,
 		"Corpse": 0.01,
+		"AnimalCorpse": 0.01,
 	}
 	if perishable.has(def_name):
 		is_perishable = true

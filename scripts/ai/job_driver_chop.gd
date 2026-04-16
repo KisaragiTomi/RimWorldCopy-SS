@@ -76,10 +76,7 @@ func _finish_chop() -> void:
 			var bonus: float = 1.0 + skill * 0.03
 			var yield_wood: int = roundi(plant.growth * 25.0 * bonus)
 			if yield_wood > 0:
-				var wood := Item.new("Wood")
-				wood.grid_pos = job.target_pos
-				wood.stack_count = yield_wood
-				ThingManager.add_thing(wood)
+				ThingManager.spawn_item_stacks("Wood", yield_wood, job.target_pos)
 			ThingManager.destroy_thing(t)
 			pawn.gain_xp("Plants", CHOP_XP)
 			_plants_chopped += 1

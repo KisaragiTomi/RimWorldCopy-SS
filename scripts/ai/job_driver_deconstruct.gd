@@ -83,10 +83,7 @@ func _finish_deconstruct() -> void:
 			var offset: int = 0
 			for item_def: String in yields:
 				var count: int = yields[item_def]
-				var item := Item.new(item_def)
-				item.grid_pos = job.target_pos + Vector2i(offset, 0)
-				item.stack_count = count
-				ThingManager.add_thing(item)
+				ThingManager.spawn_item_stacks(item_def, count, job.target_pos + Vector2i(offset, 0))
 				offset += 1
 
 			var skill: int = pawn.get_skill("Construction") if pawn else 0

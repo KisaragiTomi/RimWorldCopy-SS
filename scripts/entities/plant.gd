@@ -28,33 +28,28 @@ func _apply_plant_def() -> void:
 			harvest_item = "RawFood"
 			harvest_yield = 11
 			days_to_mature = 5.6
-			growth_rate_per_tick = 0.0007
 		"Rice":
 			harvest_item = "RawFood"
 			harvest_yield = 6
 			days_to_mature = 3.0
-			growth_rate_per_tick = 0.0013
 		"Corn":
 			harvest_item = "RawFood"
 			harvest_yield = 22
 			days_to_mature = 11.3
-			growth_rate_per_tick = 0.00035
 		"Cotton":
 			harvest_item = "Cloth"
 			harvest_yield = 10
 			days_to_mature = 6.4
-			growth_rate_per_tick = 0.0006
 		"Healroot":
 			harvest_item = "HerbalMedicine"
 			harvest_yield = 1
 			days_to_mature = 8.0
-			growth_rate_per_tick = 0.0005
 		"Tree":
 			harvest_item = "Wood"
 			harvest_yield = 25
 			days_to_mature = 14.0
-			growth_rate_per_tick = 0.0003
 			is_sown = false
+	growth_rate_per_tick = 1.0 / (days_to_mature * 2500.0) if days_to_mature > 0.0 else 0.0005
 
 
 var frozen_ticks: int = 0
@@ -77,6 +72,8 @@ func tick_growth(fertility: float = 1.0, tick_interval: int = 1) -> void:
 		return
 
 	var temp: float = GameState.temperature if GameState else 15.0
+	if SeasonManager and SeasonManager.has_method("get_temp_offset"):
+		temp += SeasonManager.get_temp_offset()
 	if WeatherManager:
 		temp += WeatherManager.get_temp_offset()
 

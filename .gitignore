@@ -28,9 +28,11 @@ Desktop.ini
 # === Screenshots & logs ===
 screenshot*.png
 ss_*.png
+r*_screenshot.png
 *.log
 mem_monitor.log
 debug_ss.py
+logs/screenshots/
 
 # === Decompiled reference (large, auto-generated) ===
 decompiled/Assembly-CSharp/
@@ -41,6 +43,15 @@ godot_stdout.txt
 godot_stderr.txt
 entities.json
 mempalace.yaml
+
+# === Extracted assets (from RimWorld, copyrighted) ===
+assets/textures/extracted/
+assets/textures/sprites/
+assets/textures/tiles/
+
+# === Test artifacts ===
+test_screenshots/
+rtest.py
 
 # === Cursor internals ===
 .cursor/

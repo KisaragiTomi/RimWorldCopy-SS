@@ -81,16 +81,9 @@ func _finish_hunt() -> void:
 		leather = maxi(1, roundi(leather * (0.7 + _rng.randf() * 0.3)))
 
 		if ThingManager:
-			var meat_item := Item.new("Meat")
-			meat_item.stack_count = meat
-			meat_item.grid_pos = animal.grid_pos
-			ThingManager.spawn_thing(meat_item, animal.grid_pos)
-
+			ThingManager.spawn_item_stacks("Meat", meat, animal.grid_pos)
 			if leather > 0:
-				var leather_item := Item.new("Leather")
-				leather_item.stack_count = leather
-				leather_item.grid_pos = animal.grid_pos
-				ThingManager.spawn_thing(leather_item, animal.grid_pos)
+				ThingManager.spawn_item_stacks("Leather", leather, animal.grid_pos)
 
 		pawn.gain_xp("Shooting", 60.0)
 		if pawn.thought_tracker:

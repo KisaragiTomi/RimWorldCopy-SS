@@ -211,20 +211,26 @@ func _incident_resource_drop() -> void:
 		var map: MapData = GameState.get_map() if GameState else null
 		if map:
 			var drop_pos := Vector2i(_rng.randi_range(20, map.width - 20), _rng.randi_range(20, map.height - 20))
-			var item := Item.new(res_name)
-			item.stack_count = amount
-			item.grid_pos = drop_pos
-			ThingManager.spawn_thing(item, drop_pos)
+			ThingManager.spawn_item_stacks(res_name, amount, drop_pos)
 	_record_incident("ResourceDrop", {"resource": res_name, "amount": amount})
 
+
+var _temp_shift: float = 0.0
+var _temp_shift_decay: float = 0.0
 
 func _incident_temperature_shift() -> void:
 	if not GameState:
 		return
 	var shift: float = _rng.randf_range(-10.0, 10.0)
-	GameState.temperature += shift
+	_temp_shift += shift
 	var event_name := "ColdSnap" if shift < 0 else "HeatWave"
 	_record_incident(event_name, {"shift": shift})
+
+func get_temp_shift() -> float:
+	return _temp_shift
+
+func decay_temp_shift() -> void:
+	_temp_shift = lerpf(_temp_shift, 0.0, 0.1)
 
 
 func _incident_disease() -> void:

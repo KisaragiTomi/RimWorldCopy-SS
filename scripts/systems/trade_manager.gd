@@ -129,10 +129,7 @@ func buy_item(item_name: String, quantity: int) -> Dictionary:
 				var map: MapData = GameState.get_map() if GameState else null
 				if map:
 					var drop := Vector2i(map.width / 2, map.height / 2)
-					var item := Item.new(item_name)
-					item.stack_count = available
-					item.grid_pos = drop
-					ThingManager.spawn_thing(item, drop)
+					ThingManager.spawn_item_stacks(item_name, available, drop)
 
 			_log_trade("buy", item_name, available, cost)
 			trade_completed.emit(item_name, available, -cost)

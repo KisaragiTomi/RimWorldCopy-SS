@@ -38,8 +38,21 @@ func _ready() -> void:
 		TickManager.rare_tick.connect(_on_rare_tick)
 
 
+const BASE_TEMPERATURE := 21.0
+
 func _on_rare_tick(_tick: int) -> void:
 	_update_season()
+	_sync_temperature()
+
+func _sync_temperature() -> void:
+	if not GameState:
+		return
+	var seasonal_base: float = BASE_TEMPERATURE + get_temp_offset()
+	var event_shift: float = 0.0
+	if IncidentManager and IncidentManager.has_method("get_temp_shift"):
+		event_shift = IncidentManager.get_temp_shift()
+		IncidentManager.decay_temp_shift()
+	GameState.temperature = seasonal_base + event_shift
 
 
 func _update_season() -> void:
@@ -49,8 +62,8 @@ func _update_season() -> void:
 	var quadrum: String = "Aprimay"
 	if GameState and GameState.has_method("get_quadrum"):
 		quadrum = GameState.get_quadrum()
-	elif GameState and "quadrum" in GameState:
-		quadrum = str(GameState.quadrum)
+	elif GameState and "game_date" in GameState and GameState.game_date is Dictionary:
+		quadrum = str(GameState.game_date.get("quadrum", "Aprimay"))
 	if quadrum == _last_quadrum:
 		return
 

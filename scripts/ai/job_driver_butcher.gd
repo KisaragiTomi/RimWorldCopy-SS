@@ -73,15 +73,8 @@ func _finish_butcher() -> void:
 			var meat_count: int = roundi(yields.get("meat", 30) * bonus)
 			var leather_count: int = roundi(yields.get("leather", 15) * bonus)
 
-			var meat := Item.new("Meat")
-			meat.grid_pos = job.target_pos
-			meat.stack_count = meat_count
-			ThingManager.add_thing(meat)
-
-			var leather := Item.new("Leather")
-			leather.grid_pos = job.target_pos + Vector2i(1, 0)
-			leather.stack_count = leather_count
-			ThingManager.add_thing(leather)
+			ThingManager.spawn_item_stacks("Meat", meat_count, job.target_pos)
+			ThingManager.spawn_item_stacks("Leather", leather_count, job.target_pos + Vector2i(1, 0))
 
 			pawn.gain_xp("Cooking", 30.0)
 

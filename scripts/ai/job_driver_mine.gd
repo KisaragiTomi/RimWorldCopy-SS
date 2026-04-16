@@ -102,19 +102,16 @@ func _finish_mine() -> void:
 	cell.zone = ""
 
 	if ThingManager:
-		var item := Item.new(item_name)
-		item.stack_count = count
-		item.grid_pos = job.target_pos
-		ThingManager.spawn_thing(item, job.target_pos)
+		ThingManager.spawn_item_stacks(item_name, count, job.target_pos)
 
 	var skill: int = pawn.get_skill_level("Mining")
 	var bonus_yield: int = roundi(count * skill * 0.03)
 	if bonus_yield > 0:
 		if ThingManager:
-			var bonus := Item.new(item_name)
-			bonus.stack_count = bonus_yield
-			bonus.grid_pos = job.target_pos
-			ThingManager.spawn_thing(bonus, job.target_pos)
+			ThingManager.spawn_item_stacks(item_name, bonus_yield, job.target_pos)
+
+	if ore_type == "" and ThingManager:
+		ThingManager.spawn_item_stacks("StoneChunks", 1, job.target_pos)
 
 	pawn.gain_xp("Mining", 60.0)
 
