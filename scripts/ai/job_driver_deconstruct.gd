@@ -86,7 +86,7 @@ func _finish_deconstruct() -> void:
 				ThingManager.spawn_item_stacks(item_def, count, job.target_pos + Vector2i(offset, 0))
 				offset += 1
 
-			var skill: int = pawn.get_skill("Construction") if pawn else 0
+			var skill: int = pawn.get_skill_level("Construction") if pawn else 0
 			pawn.gain_xp("Construction", 20.0 + skill * 1.0)
 
 			var yield_str: String = ", ".join(yields.keys().map(func(k: String) -> String: return str(yields[k]) + " " + k))

@@ -11,7 +11,7 @@ const SPOT_TYPES: Dictionary = {
 	"SteelVein": {"resource": "Steel", "amount_range": [30, 80], "rarity": 0.4},
 	"GoldDeposit": {"resource": "Gold", "amount_range": [5, 20], "rarity": 0.1},
 	"UraniumDeposit": {"resource": "Uranium", "amount_range": [3, 10], "rarity": 0.05},
-	"ComponentCluster": {"resource": "Component", "amount_range": [2, 8], "rarity": 0.15},
+	"ComponentCluster": {"resource": "Components", "amount_range": [2, 8], "rarity": 0.15},
 	"JadeVein": {"resource": "Jade", "amount_range": [5, 15], "rarity": 0.08},
 	"SilverVein": {"resource": "Silver", "amount_range": [20, 60], "rarity": 0.2},
 	"MedicineHerbs": {"resource": "Herbal Medicine", "amount_range": [3, 10], "rarity": 0.25},

@@ -2,7 +2,50 @@
 
 > 引擎：Godot 4.6 (GDScript)  
 > 目标：系统级复刻 RimWorld 核心玩法，非像素级还原  
-> 更新：2026-04-14 R39 **200人极限测试 — FPS 49-60**
+> 更新：2026-04-19 R32 **全科技+全建筑+19系统验证完成**
+
+---
+
+## R27-R32: 科技树全解锁 + 全建筑测试 + 系统优化 (2026-04-19)
+
+### 关键成果
+- **30/30 科技项目全解锁**
+- **35 种建筑类型全部放置并验证**（含 5 个飞船组件）
+- **19 个系统全面验证通过**
+- **13 个 Bug 修复 + 1 项 AI 优化**
+- **226K+ ticks (~38 游戏天) 零崩溃运行**
+
+### Bug 修复清单
+
+| # | Bug | 修复文件 |
+|---|-----|----------|
+| 11 | Research 空转（26% 浪费） | job_giver_research.gd |
+| 12 | BENCH_DEFS 缺少工作台 | job_giver_craft.gd |
+| 13 | Craft assigned 标志卡死 | job_driver_craft.gd |
+
+### AI 优化效果
+
+| 指标 | 优化前 (R23) | 优化后 (R32) | 变化 |
+|------|:----------:|:----------:|:----:|
+| 生产率 | 47.7% | **76.3%** | +28.6% |
+| Research 空转 | 26.0% | **0.0%** | -26.0% |
+| 闲逛 Wander | 6.0% | **0.0%** | -6.0% |
+| Sow | 30.0% | **55.0%** | +25.0% |
+| Harvest | 11.7% | **20.0%** | +8.3% |
+| 异常事件 | 0 | **0** | = |
+
+### 季节系统验证
+
+| 季节 | Growth | Temp | Raid Mod | 验证方式 |
+|------|:------:|:----:|:--------:|:--------:|
+| Spring | 1.0 | +0 | 0.8 | 代码 |
+| Summer | 1.3 | +8 | 1.0 | 运行时 |
+| Fall | 0.8 | -2 | 1.2 | 运行时 |
+| Winter | 0.0 | -15 | 0.6 | 代码 |
+
+### 验证系统 (19个)
+研究、电力、制造、建造、动物、贸易、火灾、突袭、季节、
+娱乐、医疗、心情、烹饪、AI工作、温控、飞船、物品、殖民者需求、战斗
 
 ---
 
@@ -5998,3 +6041,1024 @@ R40 Eat 修复后首轮全功能验证：所有系统正常工作。
 | Crafter | (25,52) | Harvest | 0.96 | 0.98 |
 
 **验证**: 58 FPS, 6 pawns, 597 things, 行走动画+水面波纹
+
+---
+
+### R170 — 地面草纹覆盖 + 光源暖光增强
+
+**目标**: 地面植被密度感增强、光照氛围改善
+
+1. **地面草纹覆盖** (`_render_grass_overlay`)
+   - 程序化全地图草纹理 (像素级密度)
+   - SoilRich 45%, Soil 35%, Marshy 25%, Gravel 12%
+   - 草叶 (2-4px高, 3-8根/格)
+
+2. **光源暖光增大** (`_try_render_building_sprite`)
+   - Campfire: 10→14格半径, alpha 0.22→0.30
+   - TorchLamp: 6→8格半径, alpha 0.15→0.20
+   - 渐变更暖 (内部偏橙外部偏黄)
+
+**殖民者数据** (Aprimay 2, 60 FPS):
+
+| 殖民者 | 位置 | 工作 | 脚下 | 食物 | 休息 |
+|--------|------|------|------|------|------|
+| Engie | (25,31) | Harvest | Tree | 0.98 | 0.98 |
+| Doc | (25,31) | Harvest | Tree | 0.98 | 0.98 |
+| Hawk | (27,31) | Hunt | - | 0.98 | 0.98 |
+| Cook | (25,31) | Harvest | Tree | 0.98 | 0.98 |
+| Miner | (25,31) | Harvest | Tree | 0.98 | 0.98 |
+| Crafter | (25,31) | Harvest | Tree | 0.98 | 0.98 |
+
+**验证**: 60 FPS, 6 pawns, 742 things, 草纹覆盖+暖光增强
+
+---
+
+### R171 — 崖壁阴影增强 + 空闲问号指示
+
+**目标**: 地形深度感增强、殖民者状态可读性
+
+1. **崖壁阴影增强** (`_render_terrain_blend`)
+   - 范围: 5→8px, 四方向 (原仅下+右)
+   - 衰减: 线性→二次方 (更柔和)
+   - 南侧更深 (0.45) vs 其他 (0.30)
+
+2. **空闲问号指示** (`_update_pawn_indicators`)
+   - "Idle" 改为 "?" (更大字号9px)
+   - 黄色浮动动画 (上下2px)
+   - alpha脉冲 (0.5~0.9)
+
+**殖民者数据** (Aprimay 2, 59 FPS):
+
+| 殖民者 | 位置 | 工作 | 脚下 | 食物 | 休息 |
+|--------|------|------|------|------|------|
+| Engie | (77,7) | Harvest | Wood | 0.98 | 0.99 |
+| Doc | (76,7) | Harvest | Tree | 0.98 | 0.99 |
+| Hawk | (77,7) | Harvest | Wood | 0.98 | 0.99 |
+| Cook | (75,7) | Harvest | - | 0.98 | 0.99 |
+| Miner | (77,7) | Harvest | Wood | 0.98 | 0.99 |
+| Crafter | (77,7) | Harvest | Wood | 0.98 | 0.99 |
+
+**验证**: 59 FPS, 6 pawns, 崖壁阴影+空闲问号
+
+---
+
+### R172 — 脚步尘土 + 物品阴影增强
+
+**目标**: 动态效果 + 物品立体感
+
+1. **脚步尘土** (`_lerp_sprites`)
+   - 土壤/沙/砂砾上移动时15%概率生成
+   - 3x2px褐色尘粒, 上浮消散 0.8秒
+
+2. **物品阴影增强** (`_try_render_item_sprite`)
+   - 阴影更宽 (1.1x), 更扁 (0.4x)
+   - 位置下移至 CELL_SIZE*0.35
+
+**殖民者数据** (Aprimay 2, 52 FPS):
+
+| 殖民者 | 位置 | 工作 | 脚下 |
+|--------|------|------|------|
+| Engie | (78,62) | Harvest | Tree |
+| Doc | (78,62) | Harvest | Tree |
+| Hawk | (87,54) | Harvest | Tree |
+| Cook | (78,62) | Harvest | Tree |
+| Miner | (78,62) | Harvest | Tree |
+| Crafter | (78,62) | Harvest | Tree |
+
+**验证**: 52 FPS, 6 pawns, 743 things, 脚步尘土+物品阴影
+
+---
+
+### R173 — 地形微噪声 + 地板纹理增强
+
+**目标**: 地形视觉丰富度 + 建筑内部辨识度
+
+1. **地形微噪声** (`_build_tileset`)
+   - Gravel: 15%概率碎石颗粒(darkened 0.08~0.18), 8%概率亮斑
+   - Soil类: 22%概率绿色杂草斑(+5%), 10%概率泥暗斑, 5%概率沙色高亮
+   - Rock类: 12%概率暗斑(+4%), 6%概率亮斑(+2%)
+   - Sand: 10%概率亮斑, 5%概率暖色过渡
+
+2. **WoodFloor 纹理增强** (`_build_tileset`)
+   - 基色调暗至 (0.52,0.38,0.22), 增强与土壤对比
+   - 添加 sin 木纹纹理 + board_id 变量化
+   - 接缝线加深至 18%, 板缝 10%
+   - 3%概率随机木节暗斑
+   - Concrete 增加 5% 随机细纹
+
+**殖民者数据** (Aprimay 1, 59 FPS):
+
+| 殖民者 | 位置 | 地形 | 工作 | 脚下物品 |
+|--------|------|------|------|----------|
+| Engie | (44,66) | SoilRich | Harvest | Tree |
+| Doc | (60,60) | Sand | Cook | Campfire+25食物 |
+| Hawk | (60,60) | Sand | Cook | Campfire+25食物 |
+| Cook | (60,60) | Sand | Cook | Campfire+25食物 |
+| Miner | (44,66) | SoilRich | Harvest | Tree |
+| Crafter | (61,58) | Sand | Construct | (空) |
+
+**注意**: Campfire(60,60)堆积25个食物, 可能需要仓储区分配优化
+
+**验证**: 59 FPS, 6 pawns, 829 things, 地形噪声+地板纹理增强
+
+---
+
+### R174 — 季节地形色调 + 地面杂物
+
+**目标**: 季节视觉差异化 + 地面细节丰富度
+
+1. **季节性地形色调** (`_update_seasonal_colors`)
+   - 春: terrain(0.95,1.0,0.90) grass 90%
+   - 夏: terrain(1.0,0.98,0.90) grass 100%
+   - 秋: terrain(0.95,0.85,0.65) grass 35%, 植物tint(0.9,0.75,0.5)
+   - 冬: terrain(0.78,0.74,0.68) grass 8%, 植物tint(0.65,0.62,0.58)
+   - 通过 _terrain_layer.modulate 和 _grass_overlay_sprite.modulate.a 实现
+
+2. **地面杂物点缀** (`_render_grass_overlay`)
+   - Gravel: 1-4个碎石, 1-2px, 灰棕色
+   - RoughStone/Sand: 0-2个碎石
+   - 颜色随机 brightness 0.35~0.55
+
+**殖民者数据** (Aprimay 1, 54 FPS):
+
+| 殖民者 | 位置 | 地形 | 工作 | 脚下物品 |
+|--------|------|------|------|----------|
+| Engie | (60,60) | Soil | Cook | Campfire+3食物 |
+| Doc | (60,60) | Soil | Cook | Campfire+3食物 |
+| Hawk | (60,60) | Soil | Cook | Campfire+3食物 |
+| Cook | (60,60) | Soil | Cook | Campfire+3食物 |
+| Miner | (60,60) | Soil | Cook | Campfire+3食物 |
+| Crafter | (60,60) | Soil | Cook | Campfire+3食物 |
+
+**季节效果验证**: 秋(暖橙调)、冬(棕灰调+草消失)均有明显视觉差异
+
+**验证**: 54 FPS, 6 pawns, 550 things, 季节色调+地面碎石
+
+---
+
+### R175 — 秋/冬季落叶树木
+
+**目标**: 季节性植物视觉变化, 使用原版 RimWorld leafless 贴图
+
+1. **落叶贴图加载** (`_load_plant_textures`)
+   - 从 extracted/plants/ 加载所有 `_Leafless` 贴图
+   - 存入 `_plant_leafless_textures` 字典
+
+2. **树木落叶映射** (`TREE_LEAFLESS_MAP`)
+   - Oak, Birch, Maple, Poplar, Cypress, Willow → 对应 Leafless 贴图
+   - Pine 保持常绿(无映射)
+
+3. **季节切换** (`_update_seasonal_colors`)
+   - 秋(Septober)/冬(Decembary): 落叶树切换到 leafless 贴图
+   - 春(Aprimay)/夏(Jugust): 恢复正常贴图
+   - 通过 `spr.set_meta("tex_name")` 跟踪原始贴图
+
+**殖民者数据** (Aprimay 1, 58 FPS):
+- 全部6人在 (74,79) SoilRich Harvest
+
+**验证**: 58 FPS, 落叶/秋/冬效果明显, 松树保持常绿
+
+---
+
+### R176 — 夜间可见度 + 装备可视化
+
+**目标**: 夜间体验改善 + 殖民者装备辨识
+
+1. **夜间亮度调整** (`_update_day_night`)
+   - 深夜颜色从 (0.25,0.25,0.38) → (0.35,0.35,0.50)
+   - 过渡色同步提亮
+   - 光源缩放增强 1.0+night*1.2
+
+2. **装备色彩可视化** (`_create_pawn_sprite`)
+   - FlakVest → 军绿(0.42,0.45,0.35)
+   - FlakJacket → 深绿(0.38,0.40,0.32)
+   - PowerArmor/Marine → 金属灰(0.50,0.50,0.55)
+   - 无装备 → 随机衣服色
+   - 头盔(SimpleHelmet) → 灰色覆盖在头部
+
+**殖民者装备** (Aprimay, 60 FPS):
+
+| 殖民者 | 身体装甲 | 武器 | 头盔 |
+|--------|---------|------|------|
+| Engie | FlakVest | Revolver | - |
+| Doc | FlakVest | Revolver | - |
+| Hawk | FlakVest | Rifle | SimpleHelmet |
+| Cook | - | Knife | - |
+| Miner | - | Revolver | - |
+| Crafter | FlakVest | Knife | - |
+
+**验证**: 60 FPS, 夜间更亮+光源增强, 装备色彩区分
+
+---
+
+### R177 — 草丛增强 + 山体石块散布
+
+**目标**: 地面植被丰富度 + 环境细节
+
+1. **草丛增强** (`_render_grass_overlay`)
+   - 草叶数量 5~12 (原3~8)
+   - 草叶高度 2~5px (原2~4px)
+   - 草叶宽度 1~2px (新增)
+   - 颜色随机化更丰富 (r: 0.28~0.40, g: 0.48~0.62)
+   - alpha 0.35~0.55 (更可见)
+
+2. **山体边缘石块** (`_render_grass_overlay`)
+   - 检测与山体相邻的可通行格子
+   - 每格 1~3 块石头, 2~4px 宽, 2~3px 高
+   - 灰棕色 (brightness 0.40~0.58, alpha 0.35)
+
+**殖民者数据** (Aprimay, 58 FPS):
+- Engie/Doc/Crafter: (39,57) Soil Harvest
+- Hawk/Cook: (47,54) MarshyTerrain Harvest
+- Miner: (46,54) MarshyTerrain Harvest
+
+**验证**: 58 FPS, 草丛更大更密更自然, 山体边有石块碎屑
+
+---
+
+### R178 — 野花点缀
+
+**目标**: 地面生态多样性
+
+1. **野花散布** (`_render_grass_overlay`)
+   - 35%概率在每个土壤格上生成 1~3 朵花
+   - 4种颜色: 黄色蒲公英, 白色小花, 淡紫花, 浅红花
+   - 1~2px 宽, 半透明(alpha 0.30~0.45)
+   - 仅在 Soil/SoilRich/MarshyTerrain/Gravel 上
+
+**殖民者数据** (Aprimay 1, 58 FPS):
+- Engie/Hawk/Miner/Crafter: (40,39) Soil Harvest
+- Doc: (55,36) Soil Harvest
+- Cook: (43,82) SoilRich Harvest
+
+**验证**: 58 FPS, 地面有多色小花点缀, 更自然
+
+---
+
+### R179 — 物品可见度 + 水域增强
+
+**目标**: 地面物品辨识度 + 水面效果
+
+1. **物品尺寸增强** (`_try_render_item_sprite`)
+   - 默认物品 size_mult 1.4 → 1.6
+   - StoneChunks 2.0 → 2.2
+   - WoodLog 1.6 → 1.8
+   - 金属类物品 1.5
+   - 标签加前缀 "x", z_index 提升到 3
+   - 标签文字微暖色(1.0,1.0,0.85)
+
+2. **水域高光增强** (`_spawn_water_highlights`)
+   - 高光亮度提升 (alpha 0.25→0.32, 0.12→0.18)
+   - 波纹亮度提升 (alpha 0.18→0.25)
+   - 水面密度 deep 0.35→0.45, shallow 0.25→0.32
+
+**殖民者数据** (Aprimay, 60 FPS):
+- Engie: (62,60) Gravel DeliverResources
+- Doc/Hawk/Cook/Miner/Crafter: (63,79) Soil Harvest
+
+**验证**: 60 FPS, 物品更大更可见, 水面高光更亮
+
+---
+
+### R180 — 山体纹理 + 墙壁深度增强
+
+**目标**: 山体岩石更逼真 + 建筑墙壁更有立体感
+
+1. **山体裂缝纹理** (`_build_tileset` rock_types分支)
+   - Mountain: 添加水平/垂直正弦裂缝(crack_h/crack_v), 裂缝处加深25%
+   - 5%概率矿物亮斑, 8%概率深色斑点
+   - 顶部2px微高光, 底部2px微阴影, 增加立体感
+   - RoughStone: 正弦波纹理图案(stone_pat), 高值亮12%低值暗14%
+   - Cave: 更高频的暗斑(15%概率暗22%), 少量亮斑
+
+2. **墙壁阴影/高光增强** (`_try_render_building_sprite`)
+   - 阴影从3px扩展到5px, 起始alpha从0.15提升到0.20
+   - 新增顶部2px高光条(暖白色alpha 0.12/0.06)
+   - 阴影宽度+2px(CELL_SIZE+2)增加扩散感
+
+**殖民者数据** (Aprimay 1, 57 FPS):
+| 名字 | 位置 | 地形 | 工作 | 食物 | 休息 | 心情 | 装备 | Cell内容 |
+|------|------|------|------|------|------|------|------|----------|
+| Engie | (111,47) | SoilRich | Harvest | 0.97 | 0.98 | 0.91 | FlakVest+Revolver | Tree |
+| Doc | (111,47) | SoilRich | Harvest | 0.97 | 0.98 | 0.93 | FlakVest+Revolver | Tree |
+| Hawk | (111,47) | SoilRich | Harvest | 0.97 | 0.98 | 0.95 | FlakVest+SimpleHelmet+Rifle | Tree |
+| Cook | (111,47) | SoilRich | Harvest | 0.97 | 0.98 | 0.85 | Knife | Tree |
+| Miner | (111,47) | SoilRich | Harvest | 0.97 | 0.98 | 0.83 | Revolver | Tree |
+| Crafter | (111,47) | SoilRich | Harvest | 0.97 | 0.98 | 0.95 | FlakVest+Knife | Tree |
+
+**验证**: 57 FPS, 山体有裂缝纹理更逼真, 墙壁有高光+深阴影更立体
+
+---
+
+### R181 — 悬崖边界 + 树木落影增强
+
+**目标**: 山体-地形过渡更自然 + 树木阴影更明显
+
+1. **悬崖阴影四方向** (`_render_terrain_blend`)
+   - CLIFF_PX 8 → 10, 阴影更深更远
+   - 补全北(0,-1)和西(-1,0)方向的悬崖阴影(半透明)
+   - 南向ao_depth 0.50, 东向0.40, 其余0.25
+   - 山体侧添加边缘高光线(暖色alpha 0.12-0.15)
+
+2. **树木落影增强** (`_try_render_plant_sprite`)
+   - 树木阴影growth阈值 0.3 → 0.2, 更早显示阴影
+   - 阴影alpha 0.22 → 0.28, 更可见
+   - 阴影宽度系数 1.2 → 1.3, 偏移增大(0.35,0.7)
+   - 非树植物阴影growth阈值 0.5 → 0.4, alpha 0.12 → 0.18
+
+**殖民者数据** (Aprimay 1, 57 FPS):
+| 名字 | 位置 | 地形 | 工作 | 食物 | 休息 | 心情 | 装备 | Cell内容 |
+|------|------|------|------|------|------|------|------|----------|
+| Engie | (47,74) | SoilRich | Harvest | 0.99 | 0.99 | 0.91 | FlakVest+Revolver | Tree |
+| Doc | (47,74) | SoilRich | Harvest | 0.99 | 0.99 | 0.95 | FlakVest+Revolver | Tree |
+| Hawk | (60,13) | RoughStone | Hunt | 0.99 | 0.99 | 0.97 | FlakVest+Helmet+Rifle | - |
+| Cook | (50,64) | SoilRich | DeliverResources | 0.99 | 0.99 | 0.93 | Knife | - |
+| Miner | (46,58) | Soil | DeliverResources | 0.99 | 0.99 | 0.93 | Revolver | - |
+| Crafter | (41,63) | Soil | Harvest | 0.99 | 0.99 | 1.00 | FlakVest+Knife | Tree |
+
+**验证**: 57 FPS, 悬崖阴影四方向完整+边缘高光, 树木阴影更深更宽
+
+---
+
+### R182 — 殖民者/物品可见度增强
+
+**目标**: 殖民者更大更清晰 + 地面资源更显眼
+
+1. **殖民者尺寸增大** (`_create_pawn_sprite`)
+   - 身体纹理: 1.8 → 2.2倍CELL_SIZE
+   - 头发纹理: 1.2 → 1.5倍, 位置微调(-0.35)
+   - 名字标签: 字体 7→8, 背景宽度+0.4
+   - 工作标签: 字体 6→7
+   - 健康条: 宽度+2px, 高度2→3px, 位置上移
+
+2. **地面资源尺寸** (`_try_render_item_sprite`)
+   - 默认 1.6 → 1.7
+   - StoneChunks 2.2 → 2.5
+   - WoodLog 1.8 → 2.0
+   - 金属类 1.5 → 1.7
+   - 新增 StoneBlocks 1.8
+
+**殖民者数据** (Aprimay 1, 58 FPS):
+| 名字 | 位置 | 地形 | 工作 | 食物 | 休息 | 心情 | 装备 | Cell内容 |
+|------|------|------|------|------|------|------|------|----------|
+| Engie | (55,43) | SoilRich | Harvest | 0.99 | 0.99 | 0.93 | FlakVest+Revolver | Tree |
+| Doc | (70,39) | Gravel | Harvest | 0.99 | 0.99 | 0.95 | FlakVest+Revolver | Tree |
+| Hawk | (70,39) | Gravel | Harvest | 0.99 | 0.99 | 0.97 | FlakVest+Helmet+Rifle | Tree |
+| Cook | (70,39) | Gravel | Harvest | 0.99 | 0.99 | 0.93 | Knife | Tree |
+| Miner | (70,39) | Gravel | Harvest | 0.99 | 0.99 | 0.93 | Revolver | Tree |
+| Crafter | (70,39) | Gravel | Harvest | 0.99 | 0.99 | 0.95 | FlakVest+Knife | Tree |
+
+**验证**: 58 FPS, 殖民者明显更大, 标签更清晰, 石块/木材更显眼
+
+---
+
+### R183 — 动物增强 + 殖民者阴影
+
+**目标**: 动物更可辨识 + 殖民者立体感
+
+1. **动物尺寸增大** (`_animal_size_mult`)
+   - Muffalo/Cow: 1.4 → 1.6
+   - Deer: 1.2 → 1.4
+   - 小动物(Rat/Squirrel): 0.7 → 0.8
+   - 新增 Bear/Megasloth/Thrumbo: 1.8
+   - 默认: 1.0 → 1.1
+
+2. **动物物种标签** (`_create_animal_sprite`)
+   - 添加物种名Label(字体6, 半透明)
+   - 位置自动适配动物大小
+
+3. **殖民者地面阴影** (`_create_pawn_sprite`)
+   - 椭圆形阴影(宽1.4 cells, 高0.5 cells)
+   - 渐变alpha(最大0.25), z_index=-1
+   - 偏移到脚部位置
+
+**殖民者数据** (Aprimay 1, 60 FPS):
+| 名字 | 位置 | 地形 | 工作 | 食物 | 休息 | 心情 | Cell内容 |
+|------|------|------|------|------|------|------|----------|
+| Engie | (62,61) | Gravel | Cook | 0.99 | 0.99 | 0.93 | CookingStove |
+| Doc | (62,61) | Gravel | Cook | 0.99 | 0.99 | 0.93 | CookingStove |
+| Hawk | (62,61) | Gravel | Cook | 0.99 | 0.99 | 0.97 | CookingStove |
+| Cook | (62,61) | Gravel | Cook | 0.99 | 0.99 | 0.89 | CookingStove |
+| Miner | (62,61) | Gravel | Cook | 0.99 | 0.99 | 0.93 | CookingStove |
+| Crafter | (62,61) | Gravel | Cook | 0.99 | 0.99 | 1.00 | CookingStove |
+
+**验证**: 60 FPS, 动物更大+标签可见, 殖民者有地面阴影增加立体感
+
+---
+
+### R184 — 门渲染 + 地板色调
+
+**目标**: 门更像开口 + 室内地板更温暖
+
+1. **门背景色块** (`_try_render_building_sprite`)
+   - DoorSimple 添加暖棕色背景(alpha 0.6)
+   - 门框边缘深色描边(alpha 0.8)
+   - z_index=0 在门贴图之下
+
+2. **室内地板微调** (`_build_tileset`)
+   - WoodFloor: (0.52,0.38,0.22) → (0.55,0.40,0.24) 更暖
+   - Concrete: (0.60,0.60,0.58) → (0.62,0.62,0.60) 微亮
+   - Carpet: (0.60,0.30,0.30) → (0.62,0.28,0.28) 更鲜艳
+
+**殖民者数据** (Aprimay 1, 60 FPS):
+| 名字 | 位置 | 地形 | 工作 | 食物 | 休息 | 心情 | Cell内容 |
+|------|------|------|------|------|------|------|----------|
+| Engie | (60,60) | Sand | Cook | 0.99 | 0.99 | 0.89 | Campfire+23餐 |
+| Doc | (57,75) | SoilRich | Harvest | 0.99 | 0.99 | 0.91 | Tree |
+| Hawk | (60,73) | Soil | Harvest | 0.99 | 0.99 | 0.97 | - |
+| Cook | (57,75) | SoilRich | Harvest | 0.99 | 0.99 | 0.83 | Tree |
+| Miner | (60,60) | Sand | Cook | 0.99 | 0.99 | 0.91 | Campfire+23餐 |
+| Crafter | (60,60) | Sand | Cook | 0.99 | 0.99 | 0.99 | Campfire+23餐 |
+
+**验证**: 60 FPS, 门有暖色背景更像开口, 地板色调微暖
+
+---
+
+### R185 — 矿脉增强 + 地形过渡平滑
+
+**目标**: 矿脉更显眼 + 不同地形过渡更自然
+
+1. **矿脉纹理增强** (`_build_tileset` is_ore分支)
+   - 双正弦波矿脉图案(vein1+vein2取最大值)
+   - 矿脉>0.60时高亮增强(boost=0.25+(v-0.6)*0.6)
+   - <0.25暗区加深0.12
+   - 边缘像素暗化0.08, 10%概率高光点(0.35)
+   - 矿石颜色更饱和: Gold更黄, Uranium更绿, Plasteel更蓝
+
+2. **地形过渡平滑** (`_render_terrain_blend`)
+   - BLEND_PX 4 → 6像素, 更宽的渐变区域
+
+**殖民者数据** (Aprimay 1, 56 FPS):
+| 名字 | 位置 | 地形 | 工作 | 食物 | 休息 | 心情 |
+|------|------|------|------|------|------|------|
+| Engie | (81,56) | Soil | Harvest | 0.99 | 0.99 | 0.93 |
+| Doc | (81,56) | Soil | Harvest | 0.99 | 0.99 | 0.95 |
+| Hawk | (81,56) | Soil | Harvest | 0.99 | 0.99 | 0.97 |
+| Cook | (81,56) | Soil | Harvest | 0.99 | 0.99 | 0.87 |
+| Miner | (81,56) | Soil | Harvest | 0.99 | 0.99 | 0.93 |
+| Crafter | (81,56) | Soil | Harvest | 0.99 | 0.99 | 0.99 |
+
+**验证**: 56 FPS, 矿脉更明亮更饱和, 地形过渡更平滑
+
+---
+
+### R186 — 环境微尘 + 土壤色彩
+
+**目标**: 大气氛围感 + 地形辨识度
+
+1. **环境微尘粒子** (`_ready`)
+   - CPUParticles2D: 25个微尘, 12秒生命周期
+   - 大范围发射(900x600), 微弱漂浮(1-4 vel)
+   - 暖灰色半透明(0.8,0.78,0.65, alpha 0.12)
+   - z_index=8 在最上层
+
+2. **土壤色彩区分** (tileset + blend)
+   - Soil: 微暗(0.56,0.50,0.32)
+   - SoilRich: 更深更绿(0.44,0.42,0.22)
+   - Gravel: 更灰(0.60,0.57,0.52)
+   - MarshyTerrain: 更绿(0.40,0.48,0.30)
+   - Mud: 更暗棕(0.48,0.38,0.26)
+   - 水域微调: 更深蓝色
+
+**殖民者数据** (Aprimay 1, 59 FPS):
+| 名字 | 位置 | 地形 | 工作 | 食物 | 心情 |
+|------|------|------|------|------|------|
+| Engie | (36,60) | Soil | Harvest | 0.99 | 0.91 |
+| Doc | (36,60) | Soil | Harvest | 0.99 | 0.93 |
+| Hawk | (36,60) | Soil | Harvest | 0.99 | 0.95 |
+| Cook | (42,60) | Gravel | Harvest | 0.99 | 0.85 |
+| Miner | (56,59) | Soil | Harvest | 0.99 | 0.91 |
+| Crafter | (36,60) | Soil | Harvest | 0.99 | 0.99 |
+
+**验证**: 59 FPS, 环境有微尘浮动, 土壤类型色彩差异更明显
+
+---
+
+### R187 — 地形提亮 + 草地浓密化
+
+**目标**: 整体画面亮度提升、草地覆盖密度接近原版 RimWorld
+
+1. **地形基础色提亮** (tileset + blend 两处同步)
+   - Soil: (0.56→0.62, 0.50→0.56, 0.32→0.38) +10%亮度
+   - SoilRich: (0.44→0.50, 0.42→0.48, 0.22→0.28) +12%亮度
+   - Sand: (0.82→0.85) Gravel: (0.60→0.64)
+   - 所有地形统一提升 3-8%
+   - 室内地板也同步微调(WoodFloor/Concrete/Carpet)
+
+2. **草地像素覆盖增强** (`_render_grass_overlay`)
+   - 草色 alpha 0.10-0.18 → 0.20-0.28 (覆盖更不透明)
+   - 新增第5种草色变体
+   - 密度比例: SoilRich 0.45→0.55, Soil 0.35→0.45
+   - 草叶数量: 5-12 → 8-18 (Soil/SoilRich)
+   - 草叶高度: 2-5px → 3-6px
+   - 草叶 alpha: 0.35-0.55 → 0.45-0.70
+
+3. **花朵密度增强** (`_render_grass_overlay`)
+   - 新增第5种花色
+   - 花朵概率: 35% → 50%
+   - 花朵数量: 1-3 → 1-4
+   - 花朵 alpha: 0.30-0.45 → 0.40-0.55
+   - 新增纵向花瓣(30%概率)
+
+4. **草丛精灵增密** (`_spawn_ground_clutter`)
+   - 密度提升: SoilRich 0.35→0.45, Soil 0.28→0.38
+   - 精灵尺寸: 0.5-0.9 → 0.6-1.1 倍
+   - 精灵 alpha: 0.45-0.80 → 0.55-0.90
+   - 草簇增大: 6×4px → 8×6px, 更多像素填充
+   - 草簇生成率: SoilRich 30%, Soil 22%, Marshy 15%
+   - 小花尺寸增大, 花朵 alpha 提升
+
+**殖民者数据** (Aprimay 2, 58 FPS):
+| 名字 | 位置 | Cell内容 | 工作 | 食物 | 休息 | 心情 |
+|------|------|----------|------|------|------|------|
+| Engie | (84,72) | Tree | Harvest | 0.98 | 0.99 | 0.92 |
+| Doc | (84,72) | Tree | Harvest | 0.98 | 0.99 | 0.94 |
+| Hawk | (84,72) | Tree | Harvest | 0.98 | 0.99 | 0.96 |
+| Cook | (84,72) | Tree | Harvest | 0.98 | 0.99 | 0.90 |
+| Miner | (84,72) | Tree | Harvest | 0.98 | 0.99 | 0.86 |
+| Crafter | (84,72) | Tree | Harvest | 0.98 | 0.99 | 0.98 |
+
+**验证**: 58 FPS 稳定(初始加载47FPS后恢复), 地形明显提亮, 草地覆盖更浓密可见, 与原版RimWorld的绿色草地对比差距缩小
+
+---
+
+### R188 — 碎石增强 + 树干可见
+
+**目标**: 地面碎石更清晰 + 树木有可见棕色树干
+
+1. **砂砾/岩石区碎石增强** (`_render_grass_overlay` 碎石区)
+   - 碎石数量: Gravel 1-4→2-6, 其他 0-2→1-3
+   - 碎石尺寸: 1-2px → 2-3px 宽高
+   - 碎石 alpha: 0.25 → 0.40
+   - 新增高光效果: 碎石左上角加亮+0.12
+
+2. **山体边缘碎石增强** (`_render_grass_overlay` 山体邻接区)
+   - 碎石数量: 1-3 → 2-5
+   - 碎石尺寸: 2-4×2-3px → 3-5×2-4px
+   - 碎石 alpha: 0.35 → 0.50
+
+3. **树干渲染** (`_try_render_plant_sprite`)
+   - 成长>0.3的树木在底部渲染4×8px棕色树干
+   - 树干颜色: (0.43, 0.35, 0.24) 暖棕色, 带随机微变
+   - 根据成长值缩放: 0.4+g*0.3 倍
+   - 位置偏移至树木底部 (y + CELL_SIZE * 0.3)
+
+**殖民者数据** (Aprimay 2, 58 FPS):
+| 名字 | 位置 | Cell内容 | 工作 | 食物 | 休息 | 心情 |
+|------|------|----------|------|------|------|------|
+| Engie | (71,30) | Tree | Harvest | 0.98 | 0.99 | 0.91 |
+| Doc | (71,30) | Tree | Harvest | 0.98 | 0.99 | 0.93 |
+| Hawk | (71,30) | Tree | Harvest | 0.98 | 0.99 | 0.95 |
+| Cook | (71,30) | Tree | Harvest | 0.98 | 0.99 | 0.87 |
+| Miner | (71,30) | Tree | Harvest | 0.98 | 0.99 | 0.91 |
+| Crafter | (71,30) | Tree | Harvest | 0.98 | 0.99 | 0.99 |
+
+**验证**: 58 FPS 稳定, 碎石更大更明显, 树干棕色可见于树木底部, 山体边缘有更丰富的碎石散布
+
+---
+
+### R189 — 墙壁纹理 + 室内色调
+
+**目标**: 墙壁石材质感 + 室内地板更暖
+
+1. **墙壁石砖纹理叠加** (`_try_render_building_sprite` Wall分支)
+   - 新增 noise_img 叠加层(z_index=2)
+   - 水平灰缝: 每4px一条暗线(alpha 0.18)
+   - 垂直灰缝: 交错砖块纹理(每5px, 奇偶行偏移2px)
+   - 随机噪点: 15%概率亮/暗微变(±0.06)
+   - 墙壁阴影加深: 0.20→0.22
+   - 墙壁高光提亮: 0.12→0.14
+
+2. **室内地板提暖** (terrain_colors)
+   - WoodFloor: (0.58,0.43,0.27) → (0.62,0.47,0.30) 更暖更亮
+   - Concrete: (0.65,0.65,0.63) → (0.68,0.68,0.65)
+   - Carpet: (0.65,0.30,0.30) → (0.68,0.32,0.32)
+
+**殖民者数据** (Aprimay 2, 58 FPS):
+| 名字 | 位置 | Cell内容 | 工作 | 食物 | 心情 |
+|------|------|----------|------|------|------|
+| Engie | (108,59) | Tree | Harvest | 0.98 | 0.92 |
+| Doc | (108,59) | Tree | Harvest | 0.98 | 0.90 |
+| Hawk | (108,59) | Tree | Harvest | 0.98 | 0.96 |
+| Cook | (33,93) | Tree | Harvest | 0.98 | 0.90 |
+| Miner | (33,93) | Tree | Harvest | 0.98 | 0.92 |
+| Crafter | (33,93) | Tree | Harvest | 0.98 | 0.94 |
+
+**验证**: 58 FPS 稳定, 墙壁有砖石纹理可见, 室内地板更暖更亮
+
+---
+
+### R190 — 地形变化度 + 树冠色调
+
+**目标**: 打破同类地形的单调重复感 + 树木颜色多样化
+
+1. **地形 variant 亮度偏移** (`_build_tileset` 程序化回退)
+   - 4个 variant 增加 variant_shift: v0=-0.06, v1=-0.02, v2=+0.02, v3=+0.06
+   - 噪声范围增大: 土壤 0.12→0.14, 岩石 0.10→0.12, 其他 0.07→0.08
+   - 相邻格子因 variant 不同自然产生亮暗交替
+
+2. **树冠色调多样性** (`_try_render_plant_sprite`)
+   - 基于位置 hash 分6种色调变体
+   - R/G/B 各偏移 ±0.05 (成熟树)
+   - 使幼树也有 50% 的偏移效果
+   - 视觉上相邻树木有黄绿/蓝绿/暖绿等微妙差异
+
+**殖民者数据** (Aprimay 1, 60 FPS):
+| 名字 | 位置 | Cell内容 | 工作 | 食物 | 心情 |
+|------|------|----------|------|------|------|
+| Engie | (60,60) | Campfire+MealFine+2×MealSimple | Cook | 0.99 | 0.93 |
+| Doc | (60,60) | Campfire+MealFine+2×MealSimple | Cook | 0.99 | 0.95 |
+| Hawk | (60,60) | Campfire+MealFine+2×MealSimple | Cook | 0.99 | 0.97 |
+| Cook | (60,60) | Campfire+MealFine+2×MealSimple | Cook | 0.99 | 0.89 |
+| Miner | (60,60) | Campfire+MealFine+2×MealSimple | Cook | 0.99 | 0.93 |
+| Crafter | (60,60) | Campfire+MealFine+2×MealSimple | Cook | 0.99 | 0.97 |
+
+**验证**: 60 FPS 稳定, 地形格子间亮暗变化自然, 树冠颜色有多样性
+
+---
+
+### R191 — 环境暖光 + 树叶斑影
+
+**目标**: 白天场景增加微妙暖色调 + 成熟树木下方投射叶片斑影
+
+1. **日间暖色调** (`_update_day_night`)
+   - 8:00-17:00 时段基于中午距离计算 noon_warmth 因子
+   - 日间颜色从纯白变为 Color(1.0, 0.98+w*0.02, 0.95+w*0.04)
+   - 中午最暖,早晚渐弱,提升自然光照氛围
+
+2. **树叶斑影** (`_try_render_plant_sprite`)
+   - 成熟树木 (growth > 0.5) 下方生成程序化斑影
+   - 2.5×CELL_SIZE 方形随机黑色斑点图案
+   - 透明度 0.08-0.14, z_index=0 置于树下
+   - 模拟阳光穿透树叶的地面光影效果
+
+**殖民者数据** (Aprimay 2, 60 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 建筑 | 地面物品 |
+|------|-----------|------|------|------|----------|
+| Engie | (73,40) | SoilRich | Harvest | - | - |
+| Doc | (23,66) | SoilRich | Harvest | - | - |
+| Hawk | (23,66) | SoilRich | Harvest | - | - |
+| Cook | (23,66) | SoilRich | Harvest | - | - |
+| Miner | (8,93) | Soil | Harvest | - | - |
+| Crafter | (23,66) | SoilRich | Harvest | - | - |
+
+**验证**: 60 FPS 稳定, 暖色调和树叶斑影效果自然
+
+---
+
+### R192 — 土壤色调修正 + 地面物品阴影
+
+**目标**: 通过对比原版RimWorld截图,修正偏绿的土壤色调为更接近原版的棕色泥土色,增强地面物品投影
+
+1. **土壤色调调整** (两处 terrain_colors 字典)
+   - Soil: (0.62,0.56,0.38) → (0.64,0.52,0.36) - 降低绿通道使其更偏棕
+   - SoilRich: (0.50,0.48,0.28) → (0.52,0.43,0.26) - 同上
+   - Sand: (0.85,0.82,0.62) → (0.86,0.80,0.60)
+   - Gravel: (0.64,0.61,0.56) → (0.62,0.58,0.52)
+
+2. **草地覆盖色调+密度调整** (`_render_grass_overlay`)
+   - 草色从鲜绿调整为橄榄绿/黄绿色,透明度降低
+   - 像素密度: SoilRich 0.55→0.40, Soil 0.45→0.32, Marshy 0.30→0.22
+   - 草叶数量: 8-18→5-12, 3-8→2-5
+   - 草叶颜色偏橄榄色(r+0.06, g-0.06)
+
+3. **地面物品阴影增强**
+   - 无纹理物品(fallback): 添加 ColorRect 阴影 (0.7×0.25 CELL_SIZE, alpha=0.18)
+   - 有纹理物品: 阴影 alpha 0.25→0.30
+
+**殖民者数据** (Aprimay 1, 60 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 建筑 | 地面物品 |
+|------|-----------|------|------|------|----------|
+| Engie | (70,100) | Soil | Harvest | - | - |
+| Doc | (72,91) | SoilRich | Harvest | - | - |
+| Hawk | (72,99) | SoilRich | Harvest | - | - |
+| Cook | (72,99) | SoilRich | Harvest | - | - |
+| Miner | (72,91) | SoilRich | Harvest | - | - |
+| Crafter | (72,99) | SoilRich | Harvest | - | - |
+
+**验证**: 60 FPS 稳定, 土壤色调明显更偏棕色/泥土色, 与原版更接近
+
+---
+
+### R193 — 黄色野花强化 + 夜晚暗度增强
+
+**目标**: 增加原版标志性的黄色野花散布 + 加深夜晚暗度使室内外对比更明显
+
+1. **黄色野花覆盖增强** (`_render_grass_overlay`)
+   - 新增6种黄色花色 (高alpha 0.55-0.70) 为主色调(85%概率)
+   - 新增3种稀有花色 (粉/红/白, 15%概率)
+   - 按地形调整概率: SoilRich 65%, Soil 50%, 其他 25%
+   - 每格花朵数 1-4→2-5, 花瓣扩展概率提升
+   - 视觉上大量黄色小点散布在土壤上,非常接近原版风格
+
+2. **夜晚深色化** (`_update_day_night`)
+   - 深夜(21:00-4:00): Color(0.35,0.35,0.50) → Color(0.18,0.18,0.28) 暗度翻倍
+   - 黄昏过渡(20:00-21:00): 调整为更暗的终点
+   - 拂晓过渡(4:00-5:00): 从更暗的起点开始
+   - 建筑辉光: alpha系数 0.5+nf*0.5 → 0.4+nf*0.6, 尺寸×1.1
+   - 夜间室外近乎全黑,建筑区域有明显暖光对比
+
+**殖民者数据** (Aprimay 6, 57 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 建筑 | 地面物品 |
+|------|-----------|------|------|------|----------|
+| Engie | (52,8) | SoilRich | Harvest | - | - |
+| Doc | (52,8) | SoilRich | Harvest | - | - |
+| Hawk | (103,58) | SoilRich | Harvest | - | - |
+| Cook | (52,8) | SoilRich | Harvest | - | - |
+| Miner | (52,8) | SoilRich | Harvest | - | - |
+| Crafter | (52,8) | SoilRich | Harvest | - | - |
+
+**验证**: 57 FPS 稳定, 黄色野花散布明显接近原版, 夜晚显著更暗
+
+---
+
+### R194 — 树木色调修复
+
+**目标**: 修复树木/树干偏粉红问题,使颜色更自然
+
+1. **树冠 modulate 修正** (`_try_render_plant_sprite`)
+   - 成熟树: (1.0+r, 0.95+g, 0.85+b) → (0.95+r, 0.98+g, 0.92+b)
+   - 色偏幅度: ±0.05 → ±0.03 (更微妙)
+   - 移除过强的暖色偏移,保持自然绿色调
+   - 幼树偏移系数: 0.5 → 0.3
+
+2. **树干棕色加深** (`trunk_img`)
+   - 基础亮度: 0.35→0.28
+   - R通道: +0.08→+0.03 (大幅减少红色)
+   - G通道: 0→0 (保持)
+   - B通道系数: 0.70→0.65
+   - 结果: 从偏红棕变为纯棕色
+
+**殖民者数据** (Aprimay 1, 58 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 建筑 | 地面物品 |
+|------|-----------|------|------|------|----------|
+| Engie | (68,22) | SoilRich | Harvest | - | - |
+| Doc | (68,22) | SoilRich | Harvest | - | - |
+| Hawk | (6,20) | SoilRich | Harvest | - | - |
+| Cook | (68,22) | SoilRich | Harvest | - | - |
+| Miner | (68,22) | SoilRich | Harvest | - | - |
+| Crafter | (44,88) | SoilRich | Harvest | - | - |
+
+**验证**: 58 FPS 稳定, 树冠颜色更自然绿色, 树干更深棕色
+
+---
+
+### R195 — 移除冗余程序化树干
+
+**目标**: 去除与原版贴图重复的程序化树干渲染
+
+**发现**: 通过检查原版 RimWorld 树木贴图 (TreeOakB, TreeBirchA, TreePoplarA 等),
+确认这些贴图本身已包含完整的树干部分。R188 添加的程序化 trunk_img 造成了：
+1. 树干重叠渲染 (原版贴图树干 + 程序化树干)
+2. 程序化树干的红色偏移使整体偏粉
+3. 不必要的 Sprite2D 节点消耗
+
+**修改**: 完全移除 `trunk_img` + `trunk_spr` 创建代码 (约16行),
+减少每棵成熟树 1 个 Sprite2D 节点
+
+**殖民者数据** (Aprimay 5, 60 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 建筑 | 地面物品 |
+|------|-----------|------|------|------|----------|
+| Engie | (105,114) | SoilRich | Harvest | - | - |
+| Doc | (48,25) | SoilRich | Harvest | - | - |
+| Hawk | (42,24) | SoilRich | Harvest | - | - |
+| Cook | (48,25) | SoilRich | Harvest | - | - |
+| Miner | (48,25) | SoilRich | Harvest | - | - |
+| Crafter | (105,114) | SoilRich | Harvest | - | - |
+
+**验证**: 60 FPS 稳定, 树木外观更干净(无重复树干), 每棵树节省1个Sprite2D
+
+---
+
+### R196 — 同类地形格子边缘柔化
+
+**目标**: 减少同类地形相邻格子因不同随机变体导致的接缝可见性
+
+**问题分析**: 对比 v1_frame_03 (原版RimWorld) 与当前游戏截图:
+- 原版地形自然连续, 看不到格子边界
+- 当前实现虽有不同地形间的混合 (BLEND_PX=6), 但同类地形(如两个Soil格子)因使用不同随机变体仍有明显接缝
+
+**修改** (`map_viewport.gd` `_render_terrain_blend()`):
+1. 在不同地形混合之后、悬崖阴影之前, 新增同类地形边缘柔化 pass
+2. 只处理水平(右)和垂直(下)方向的同类地形边界
+3. 在边界像素处绘制半透明中性色 (alpha=0.12), 随机扩展到相邻像素 (alpha=0.06)
+4. 添加微弱的颜色噪声 (±0.03) 避免规律感
+
+**同步更新**: autotest skill 增加了 Cell 属性详情和 Pawn 属性注意事项
+
+**殖民者数据** (Aprimay 2, 60 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 心情 | 食物 | 休息 | 地面物品 |
+|------|-----------|------|------|------|------|------|----------|
+| Engie | (83,47) | SoilRich | Harvest | 0.86 | 0.96 | 0.97 | - |
+| Doc | (83,47) | SoilRich | Harvest | 0.88 | 0.96 | 0.97 | - |
+| Hawk | (26,80) | MarshyTerrain | Harvest | 0.94 | 0.96 | 0.97 | - |
+| Cook | (83,47) | SoilRich | Harvest | 0.84 | 0.96 | 0.97 | - |
+| Miner | (26,80) | MarshyTerrain | Harvest | 0.84 | 0.96 | 0.97 | - |
+| Crafter | (26,80) | MarshyTerrain | Harvest | 0.90 | 0.96 | 0.97 | - |
+
+**验证**: 60 FPS 稳定, 同类地形边缘接缝有所柔化
+
+---
+
+### R197 — 山体边缘碎石散布 + 日落色调修正
+
+**目标**: 
+1. 在山体与土壤的过渡区域添加碎石散布，参考原版 v1_frame_04 的效果
+2. 修正日落过渡色过于饱和(偏红紫)导致树木和地面呈粉红色
+
+**修改**:
+1. **山体边缘碎石** (`_spawn_ground_clutter()`):
+   - 加载原版 `StoneBit.png` 碎石贴图
+   - 对山体相邻的非山体格子(Soil/SoilRich/Gravel等), 60%概率散布1-3个碎石
+   - 50%用 StoneBit 贴图(scale 0.25-0.55), 50%用程序化 rock_tex(scale 1.2-2.5)
+   - 碎石有随机旋转(±0.5rad)和透明度(0.5-0.85)
+
+2. **日落色调修正** (`_update_day_night()`):
+   - 18:00-19:00: `Color(0.95,0.6,0.4)` → `Color(0.88,0.72,0.55)` (减少红色主导)
+   - 19:00-20:00: `Color(0.7,0.45,0.5)` → `Color(0.55,0.48,0.50)` (减少紫红偏色)
+   - 20:00-21:00: `Color(0.7,0.45,0.5)` → `Color(0.55,0.48,0.50)` (衔接更自然)
+
+**发现的问题**: 部分树木渲染为红/粉色, 需要在 R198 中调查和修复
+
+**殖民者数据** (Aprimay 3, 60 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 心情 | 食物 | 休息 | 地面物品 |
+|------|-----------|------|------|------|------|------|----------|
+| Engie | (18,78) | SoilRich | Harvest | 0.90 | 0.97 | 0.98 | Tree |
+| Doc | (18,78) | SoilRich | Harvest | 0.90 | 0.97 | 0.98 | Tree |
+| Hawk | (18,78) | SoilRich | Harvest | 0.86 | 0.97 | 0.98 | Tree |
+| Cook | (18,78) | SoilRich | Harvest | 0.90 | 0.97 | 0.98 | Tree |
+| Miner | (18,78) | SoilRich | Harvest | 0.90 | 0.97 | 0.98 | Tree |
+| Crafter | (18,78) | SoilRich | Harvest | 0.88 | 0.97 | 0.98 | Tree |
+
+**验证**: 60 FPS 稳定, 山体边缘碎石散布效果可见, 日落色调更自然(减少粉红偏色)
+
+---
+
+### R198 — 修复红色树木 (TreeMapleA 秋叶贴图)
+
+**问题**: 游戏中部分树木渲染为红/粉色,与原版春季绿树不符
+
+**调查**:
+- 检查所有树木贴图: TreeOakA(绿✓), TreePineA(绿✓), TreeBirchA(绿✓),
+  TreePoplarA(绿✓), TreeCypressA(绿✓), TreeWillowA(绿✓)
+- **TreeMapleA.png**: 红棕色秋叶! 这是原版RimWorld的秋季枫树贴图
+- 原版游戏根据季节动态更换树木贴图颜色,但我们没有季节调色逻辑
+
+**修复**: 从 `TREE_TEX_FILES` 中移除 `TreeMapleA.png`,保留6种绿色树种
+(Oak, Pine, Birch, Poplar, Cypress, Willow)
+
+**殖民者数据** (Aprimay 1, 58→60 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 心情 | 食物 | 休息 | 地面物品 |
+|------|-----------|------|------|------|------|------|----------|
+| Engie | (79,84) | Gravel | Harvest | 0.93 | 0.99 | 0.99 | - |
+| Doc | (79,84) | Gravel | Harvest | 0.95 | 0.99 | 0.99 | - |
+| Hawk | (45,76) | Gravel | Harvest | 0.97 | 0.99 | 0.99 | Tree |
+| Cook | (45,76) | Gravel | Harvest | 0.87 | 0.99 | 0.99 | Tree |
+| Miner | (76,84) | Soil | Harvest | 0.87 | 0.99 | 0.99 | Wood |
+| Crafter | (36,59) | Soil | Harvest | 0.95 | 0.99 | 0.99 | Wood |
+
+**验证**: 60 FPS 稳定, 所有树木为绿色, 红/粉色树木问题完全解决
+
+---
+
+### R199 — 地面物品渲染增强
+
+**目标**: 提高地面物品(资源堆)的可见性，使其更接近原版RimWorld的效果
+
+**修改** (`map_viewport.gd` `_try_render_item_sprite()`):
+1. **增大物品尺寸**:
+   - WoodLog: 2.0→2.6
+   - StoneChunks: 2.5→3.0
+   - 金属类(Steel/Silver/Gold/Plasteel/Uranium): 1.7→2.2
+   - StoneBlocks: 1.8→2.5
+   - 默认: 1.7→2.2
+
+2. **新增物品贴图支持**:
+   - MealSimple (已有贴图 sprites/items/MealSimple.png)
+   - RawFood, Cloth, Leather (如有贴图则使用)
+
+**殖民者数据** (Aprimay 2, 60 FPS):
+| 名字 | 位置(grid) | 地形 | 工作 | 心情 | 食物 | 休息 | 地面物品 |
+|------|-----------|------|------|------|------|------|----------|
+| Engie | (35,56) | Soil | Harvest | 0.92 | 0.98 | 0.99 | Tree |
+| Doc | (56,33) | Soil | Harvest | 0.94 | 0.98 | 0.99 | Tree |
+| Hawk | (35,56) | Soil | Harvest | 0.96 | 0.98 | 0.99 | Tree |
+| Cook | (86,108) | Soil | Harvest | 0.92 | 0.98 | 0.99 | Tree |
+| Miner | (86,108) | Soil | Harvest | 0.86 | 0.98 | 0.99 | Tree |
+| Crafter | (86,108) | Soil | Harvest | 1.00 | 0.98 | 0.99 | Tree |
+
+**验证**: 60 FPS 稳定, 地面物品(StoneChunks/WoodLog等)更大更醒目
+
+---
+
+### R27-R36 — 科技树全解锁 + 全系统深度验证
+
+**目标**: 解锁全部科技 → 放置并验证所有科技建筑 → 深度测试全部游戏系统
+
+**成果汇总**:
+
+| 维度 | 结果 |
+|------|:----:|
+| 科技 | 30/30 + ArcheotechStudy ∞ |
+| 建筑 | 35 种 / 65 座 |
+| 系统验证 | 21 个 |
+| Bug 修复 | 13 + 1 优化 |
+| 制造配方 | 7/7 |
+| 总 Ticks | 273K (~46 游戏天) |
+| 季节轮转 | 3 次 (Spring→Summer→Fall→Winter) |
+| FPS | 55 稳定 |
+| 殖民者 | 6/6 存活 |
+
+**修复的关键 Bug**:
+1. Bug #11: `JobGiverResearch` 科技全完成后无限循环 → 增加 `available_projects.is_empty()` 检查
+2. Bug #12: `JobGiverCraft.BENCH_DEFS` 缺少 4 种工作台 → 补全 StonecuttersTable/DrugLab/BreweryVat/AdvancedComponentAssembly
+3. Bug #13: `JobDriverCraft` 任务失败不释放 `assigned` 标记 → 增加 `_unassign_queue_entry()` 清理逻辑
+
+**AI 优化**: 生产率从 47.7% → 76.3%
+
+**冬季 AI 行为验证** (Decembary, 6°C, Growth=0):
+- Sow/Harvest 0% (正确: 无法种植)
+- Haul 39% + Research 36% (回退到搬运和可重复研究)
+- Rest 16.7% / Joy 5.3% / Hunt 2.0% (基础需求不变)
+
+---
+
+### R37 — 完整年度循环验证 (Winter→Spring)
+
+**里程碑**: 达成完整年度循环 Spring→Summer→Fall→Winter→**Spring (Year 5501)**
+
+| 转换 | Tick | 日期 | Temp | Growth | AI 反应 |
+|------|:----:|------|:----:|:------:|---------|
+| 1. Spring→Summer | ~120K | Jugust 1 | 29°C | 1.3 | Sow 增加 |
+| 2. Summer→Fall | ~180K | Septober 1 | 19°C | 0.8 | Harvest 主导 |
+| 3. Fall→Winter | ~240K | Decembary 1 | 6°C | 0.0 | Haul+Research |
+| 4. Winter→Spring | ~359K | Aprimay 1, 5501 | 21°C | 1.0 | **立即恢复 Sow** |
+
+**验证**: 4/6 殖民者在 Spring 首 tick 即开始播种，AI 季节适应完美。
+360K ticks (~60 天) 零崩溃，6/6 存活，30/30 科技。
+
+---
+
+### R38-R40 -- 最终综合验证
+
+**里程碑**: 406K ticks (~68 天)，Year 5501，全部目标达成。
+
+**35 种建筑类型确认在线**:
+AdvancedComponentAssembly, Battery, Bed(8), BreweryVat, Campfire,
+CommsConsole, CookingStove, Cooler, DiningChair(2), DoorSimple,
+DrugLab, FabricationBench, GeothermalGenerator, Heater,
+HiTechResearchBench, HospitalBed, LongRangeMineralScanner,
+MachiningTable, MiniTurret, MultiAnalyzer, PassiveCooler,
+ShipCryptosleepCasket, ShipEngine, ShipReactor, ShipSensorCluster,
+ShipStructuralBeam, Smithy, SolarGenerator, StonecuttersTable,
+Table, TorchLamp, TransportPodLauncher, VitalsMonitor, Wall(23),
+WoodFiredGenerator
+
+**完整季节 AI 行为总结**:
+
+| 季节 | 主导工作 | 产能 |
+|------|----------|:----:|
+| Spring | Sow 38-55% | 71-76% |
+| Summer | Sow + Harvest | ~76% |
+| Fall | Harvest + Haul | ~76% |
+| Winter | Haul 39% + Research 36% | 77% |
+
+**自然事件验证**: 7 次突袭、医疗治疗、战斗、制造、1105 次娱乐活动
+
+**最终评分**: Colony Health 75/100
+
+---
+
+### R43-R46 -- 深度分析 + 长期稳定性
+
+**Doc 心情解答**: OrphanChild 背景故事提供永久 mood debuff (0.67-0.76),
+Industrious+QuickSleeper traits 部分抵消。设计功能非 Bug。
+
+**15 种 AI 工作类型观测到**:
+Sow, Harvest, Rest, JoyActivity, Eat, Research, Haul, Hunt,
+Cook, Craft, TendPatient, RangedAttack, Clean, Chop, DeliverResources
+
+**首次崩溃**: 491K ticks (~82 天) 后, Summer 3x 快进时。可能为内存累积。
+重启后恢复正常, 新会话 FPS 稳定 51-58。
+
+**总计验证量 (R80 深度建筑验证更新)**:
+- **总 Tick: 2,597K+ (超 259 万)**
+- 最大连续运行: 1,511K ticks (Session2, 0 崩溃)
+- 季节转换: 25+ 次 (含 Wi->Sp)
+- 完整年度循环: 6+ 次
+- 突袭: 20+ 次 (自然触发)
+- 火灾: 2 次 (全部扑灭)
+- AI 工作类型: 15 种 (季节适应: 冬研究/春播种)
+- 制造配方: 7/7 全验证, **28 项制造**, 5 品质等级
+- Bug 修复: **15** + **2 优化**
+- 殖民者: 6/6 存活率 100%
+- **FPS: 3x 速度 24-60**
+- 系统验证: 22 个核心系统
+- **建筑: 38 种全验证** (电力6/制造9/防御1/医疗2/研究2/通信2/温控3/飞船5/运输1/基础7)
+- **电力: 6300W gen / 4210W cons / 600Wd stored**
+- **研究: 31 项全完成**
+- **深度验证**: 电力网2个(主网供电正常), 温控3建筑通电, 防御炮塔HP满, 飞船5部件HP满
+- **R81**: 物品栈清理 415→231 things, 3x FPS avg 37→42
+- **R82**: 7分钟稳定运行, Su→Fa 转换, 制造42件, 5次突袭, TendPatient 验证
+- **R83**: Wi→Sp 完整转换, 制造46件, 7次突袭, 全员mood 1.00, 71.4%生产效率
+- **完整四季循环验证**: Sp(播种)→Su(混合)→Fa(收获)→Wi(研究)→Sp

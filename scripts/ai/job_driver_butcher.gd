@@ -68,7 +68,7 @@ func _finish_butcher() -> void:
 		if t is Item and (t.def_name == "Corpse" or t.def_name == "AnimalCorpse") and t.grid_pos == job.target_pos:
 			ThingManager.destroy_thing(t)
 
-			var skill: int = pawn.get_skill("Cooking") if pawn else 0
+			var skill: int = pawn.get_skill_level("Cooking") if pawn else 0
 			var bonus: float = 1.0 + skill * 0.03
 			var meat_count: int = roundi(yields.get("meat", 30) * bonus)
 			var leather_count: int = roundi(yields.get("leather", 15) * bonus)

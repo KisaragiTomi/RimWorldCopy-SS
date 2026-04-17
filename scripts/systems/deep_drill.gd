@@ -9,7 +9,7 @@ const DRILL_DEFS: Dictionary = {
 	"DeepDrill_Gold": {"resource": "Gold", "yield_per_cycle": 8, "work_per_cycle": 1500},
 	"DeepDrill_Plasteel": {"resource": "Plasteel", "yield_per_cycle": 12, "work_per_cycle": 1800},
 	"DeepDrill_Uranium": {"resource": "Uranium", "yield_per_cycle": 6, "work_per_cycle": 2000},
-	"DeepDrill_Components": {"resource": "Component", "yield_per_cycle": 3, "work_per_cycle": 2500},
+	"DeepDrill_Components": {"resource": "Components", "yield_per_cycle": 3, "work_per_cycle": 2500},
 }
 
 var _active_drills: Dictionary = {}  # building_id -> {pos, drill_def, work_done, total_extracted}
@@ -24,7 +24,7 @@ func _ready() -> void:
 
 
 func generate_deposits(map_width: int, map_height: int, count: int = 12) -> void:
-	var resources: Array[String] = ["Steel", "Gold", "Plasteel", "Uranium", "Component"]
+	var resources: Array[String] = ["Steel", "Gold", "Plasteel", "Uranium", "Components"]
 	var weights: Array[float] = [0.4, 0.15, 0.15, 0.1, 0.2]
 
 	for _i: int in range(count):

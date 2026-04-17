@@ -38,7 +38,7 @@ func _on_toil_tick(toil_name: String) -> void:
 
 
 func _calc_research_ticks() -> int:
-	var skill: int = pawn.get_skill("Intellectual") if pawn else 0
+	var skill: int = pawn.get_skill_level("Intellectual") if pawn else 0
 	var factor: float = clampf(1.0 - skill * 0.04, 0.3, 1.0)
 	return roundi(BASE_TICKS * factor)
 
@@ -53,7 +53,7 @@ func _tick_research() -> void:
 
 
 func _finish_research() -> void:
-	var skill: int = pawn.get_skill("Intellectual") if pawn else 0
+	var skill: int = pawn.get_skill_level("Intellectual") if pawn else 0
 	var xp: float = BASE_XP + skill * 2.0
 	pawn.gain_xp("Intellectual", xp)
 	if ColonyLog and ResearchManager:

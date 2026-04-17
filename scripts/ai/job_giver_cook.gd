@@ -7,7 +7,7 @@ const RAW_FOOD_DEFS: PackedStringArray = ["RawFood", "Rice", "Corn", "Meat"]
 const MIN_RAW_FOOD := 3
 const STOVE_DEFS: PackedStringArray = ["CookingStove", "Campfire", "ElectricStove"]
 
-const MEALS_PER_COLONIST := 5
+const MEALS_PER_COLONIST := 10
 const MEAL_DEFS: PackedStringArray = ["MealSimple", "MealFine", "MealSurvival", "NutrientPaste", "Pemmican"]
 
 func try_issue_job(pawn: Pawn) -> Dictionary:

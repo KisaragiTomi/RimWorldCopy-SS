@@ -3,7 +3,7 @@ extends ThinkNode
 
 ## Issues joy/recreation jobs, preferring joy buildings if available.
 
-const JOY_THRESHOLD := 0.3
+const JOY_THRESHOLD := 0.5
 const JOY_BUILDING_DEFS: PackedStringArray = [
 	"ChessTable", "HorseshoesPin", "Telescope", "BilliardsTable", "PokerTable",
 ]
@@ -29,9 +29,7 @@ func _find_joy_facility(p: Pawn) -> Building:
 		return null
 	var best: Building = null
 	var best_dist: int = 999
-	for t: Thing in ThingManager.things:
-		if not (t is Building):
-			continue
+	for t: Thing in ThingManager._buildings:
 		var b := t as Building
 		if b.build_state != Building.BuildState.COMPLETE:
 			continue

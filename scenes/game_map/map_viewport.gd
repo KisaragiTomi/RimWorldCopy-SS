@@ -23,6 +23,7 @@ var _pawn_target_pos: Dictionary = {}  # pawn_id -> Vector2 (world target)
 var _animal_sprites: Dictionary = {}  # animal_id -> Sprite2D
 var _animal_target_pos: Dictionary = {}
 var _building_sprites: Dictionary = {}  # thing_id -> Sprite2D
+var _glow_sprites: Array[Sprite2D] = []
 var _building_textures: Dictionary = {}  # texture_key -> Texture2D
 var _wall_atlas_textures: Array[Texture2D] = []  # 16 connection tiles
 var _plant_sprites: Dictionary = {}  # thing_id -> Sprite2D
@@ -78,6 +79,8 @@ var _dust_tex: ImageTexture
 var _water_highlights: Array[Sprite2D] = []
 var _water_time: float = 0.0
 var _leaf_particles: CPUParticles2D
+var _ambient_dust: CPUParticles2D
+var _firefly_particles: CPUParticles2D
 var _power_overlay_sprite: Sprite2D
 var _power_overlay_visible := false
 var _beauty_overlay_sprite: Sprite2D
@@ -361,6 +364,28 @@ func _ready() -> void:
 	dust_motes.color = Color(0.8, 0.78, 0.65, 0.12)
 	dust_motes.z_index = 8
 	add_child(dust_motes)
+	_ambient_dust = dust_motes
+
+	_firefly_particles = CPUParticles2D.new()
+	_firefly_particles.emitting = false
+	_firefly_particles.amount = 20
+	_firefly_particles.lifetime = 6.0
+	_firefly_particles.one_shot = false
+	_firefly_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_firefly_particles.emission_rect_extents = Vector2(600, 400)
+	_firefly_particles.direction = Vector2(0, -0.3)
+	_firefly_particles.spread = 180.0
+	_firefly_particles.gravity = Vector2(0, -2)
+	_firefly_particles.initial_velocity_min = 2.0
+	_firefly_particles.initial_velocity_max = 8.0
+	_firefly_particles.scale_amount_min = 1.0
+	_firefly_particles.scale_amount_max = 2.0
+	_firefly_particles.color = Color(0.7, 0.9, 0.3, 0.5)
+	_firefly_particles.z_index = 8
+	var ff_mat := CanvasItemMaterial.new()
+	ff_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_firefly_particles.material = ff_mat
+	add_child(_firefly_particles)
 
 	generate_new_map(120, 120, randi())
 	_spawn_natural_vegetation()
@@ -368,6 +393,7 @@ func _ready() -> void:
 	_spawn_initial_pawns()
 	_spawn_starting_items()
 	_place_initial_blueprints()
+	_render_map()
 	_spawn_wildlife()
 	if ThingManager:
 		ThingManager.thing_spawned.connect(_on_thing_changed)
@@ -381,6 +407,29 @@ func _ready() -> void:
 	if WeatherManager:
 		WeatherManager.weather_changed.connect(_on_weather_changed)
 		_update_weather_vfx(WeatherManager.current_weather)
+	var logger_timer := Timer.new()
+	logger_timer.wait_time = 10.0
+	logger_timer.one_shot = true
+	logger_timer.timeout.connect(_auto_inject_logger)
+	add_child(logger_timer)
+	logger_timer.start()
+
+
+func _auto_inject_logger() -> void:
+	var existing := get_tree().root.get_node_or_null("_DataLogger")
+	if existing:
+		existing.queue_free()
+	var logger := Node.new()
+	logger.name = "_DataLogger"
+	logger.set_meta("log", [])
+	logger.set_meta("max_entries", 300)
+	logger.set_meta("frame_counter", 0)
+	logger.set_meta("pawn_index", 0)
+	logger.set_meta("save_name", "game_raw_data")
+	logger.set_process(true)
+	get_tree().root.add_child(logger)
+	logger.set_script(preload("res://scripts/utils/auto_logger.gd"))
+	print("DataLogger auto-injected (300 entries, round-robin per 10 frames)")
 
 
 func _spawn_natural_vegetation() -> void:
@@ -1001,6 +1050,8 @@ func _place_initial_blueprints() -> void:
 		{"def": "DiningChair", "offset": Vector2i(2, -1)},
 		{"def": "CookingStove", "offset": Vector2i(2, 1)},
 		{"def": "TorchLamp", "offset": Vector2i(-1, 2)},
+		{"def": "ResearchBench", "offset": Vector2i(3, 2)},
+		{"def": "CraftingSpot", "offset": Vector2i(-3, 2)},
 	]
 	for f: Dictionary in furniture:
 		var pos: Vector2i = center + f["offset"]
@@ -1021,24 +1072,24 @@ func _place_initial_zones(center: Vector2i) -> void:
 					ZoneManager.place_zone("Stockpile", pos)
 					if FloorManager:
 						FloorManager.set_floor(pos, "WoodPlank")
-	for dx: int in range(-6, -2):
-		for dy: int in range(-6, -2):
+	for dx: int in range(-8, -1):
+		for dy: int in range(-8, -1):
 			var pos := center + Vector2i(dx, dy)
 			if map_data.in_bounds(pos.x, pos.y):
 				var cell := map_data.get_cell_v(pos)
-				if cell and cell.is_passable() and cell.fertility > 0.5:
+				if cell and cell.is_passable() and cell.fertility > 0.1:
 					ZoneManager.place_zone("GrowingZone", pos)
-	for dx: int in range(-2, 5):
-		for dy: int in range(5, 9):
+	for dx: int in range(-3, 7):
+		for dy: int in range(5, 12):
 			var pos := center + Vector2i(dx, dy)
 			if map_data.in_bounds(pos.x, pos.y):
 				var cell := map_data.get_cell_v(pos)
-				if cell and cell.is_passable() and cell.fertility > 0.3:
+				if cell and cell.is_passable() and cell.fertility > 0.05:
 					ZoneManager.place_zone("GrowingZone", pos)
 
 
 func _on_thing_changed(_thing: Thing) -> void:
-	_render_things()
+	_things_dirty = true
 
 
 func _on_pawn_moved(_old: Vector2i, _new: Vector2i, p: Pawn) -> void:
@@ -1178,6 +1229,10 @@ func _render_things() -> void:
 	for node: Node in _item_sprites.values():
 		node.queue_free()
 	_item_sprites.clear()
+	for glow: Sprite2D in _glow_sprites:
+		if glow and is_instance_valid(glow):
+			glow.queue_free()
+	_glow_sprites.clear()
 
 	var tb: String = _get_tile_tex_base()
 	for thing: Thing in ThingManager.things:
@@ -1439,27 +1494,41 @@ func _try_render_building_sprite(bld: Building) -> bool:
 
 	var world_pos := Vector2(bld.grid_pos.x * CELL_SIZE + CELL_SIZE / 2, bld.grid_pos.y * CELL_SIZE + CELL_SIZE / 2)
 	if bld.def_name in ["Campfire", "TorchLamp"]:
-		var glow_range: int = 14 if bld.def_name == "Campfire" else 8
-		var glow_alpha: float = 0.30 if bld.def_name == "Campfire" else 0.20
+		var glow_range: int = 7 if bld.def_name == "Campfire" else 4
+		var light_intensity: float = 0.35 if bld.def_name == "Campfire" else 0.18
 		var glow := Sprite2D.new()
-		var glow_size: int = CELL_SIZE * glow_range
-		var glow_img := Image.create(glow_size, glow_size, false, Image.FORMAT_RGBA8)
+		var glow_world_size: int = CELL_SIZE * glow_range
+		var tex_scale: int = 4
+		var glow_tex_size: int = glow_world_size * tex_scale
+		var glow_img := Image.create(glow_tex_size, glow_tex_size, false, Image.FORMAT_RGBAH)
 		glow_img.fill(Color(0, 0, 0, 0))
-		var center_px := Vector2(glow_size / 2.0, glow_size / 2.0)
-		var radius := float(glow_size / 2.0)
-		for py: int in glow_size:
-			for px: int in glow_size:
+		var center_px := Vector2(glow_tex_size / 2.0, glow_tex_size / 2.0)
+		var radius := float(glow_tex_size / 2.0)
+		var sigma := radius / 3.0
+		for py: int in glow_tex_size:
+			for px: int in glow_tex_size:
 				var dist: float = Vector2(px, py).distance_to(center_px)
 				if dist < radius:
-					var t: float = 1.0 - dist / radius
-					var inner: float = t * t * t * glow_alpha
-					var warm: float = t * 0.08
-					glow_img.set_pixel(px, py, Color(1.0, 0.82 + warm, 0.35 + warm * 2.0, inner))
+					var n: float = dist / radius
+					var g: float = exp(-0.5 * (dist / sigma) * (dist / sigma))
+					var edge_fade: float = clampf((1.0 - n) * 5.0, 0.0, 1.0)
+					g *= edge_fade
+					var warm: float = g * 0.08
+					glow_img.set_pixel(px, py, Color(1.0, 0.85 + warm, 0.50 + warm, g))
 		glow.texture = ImageTexture.create_from_image(glow_img)
+		glow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		var base_scale: float = 1.0 / float(tex_scale)
+		glow.scale = Vector2(base_scale, base_scale)
 		glow.position = world_pos
-		glow.z_index = 0
+		glow.z_index = 5
+		glow.modulate.a = 0.0
+		glow.set_meta("light_intensity", light_intensity)
+		glow.set_meta("base_scale", base_scale)
+		var glow_mat := CanvasItemMaterial.new()
+		glow_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		glow.material = glow_mat
 		add_child(glow)
-		_building_sprites[bld.get_instance_id() + 100000] = glow
+		_glow_sprites.append(glow)
 		if bld.def_name == "Campfire":
 			var smoke := CPUParticles2D.new()
 			smoke.emitting = true
@@ -1502,6 +1571,17 @@ func _try_render_building_sprite(bld: Building) -> bool:
 		door_bg_spr.z_index = 0
 		add_child(door_bg_spr)
 		_building_sprites[bld.get_instance_id() + 700000] = door_bg_spr
+	if bld.def_name != "Wall" and bld.def_name != "DoorSimple":
+		var bshadow := Sprite2D.new()
+		bshadow.texture = tex
+		var sh_sx: float = float(CELL_SIZE) * bld_size.x / float(tex.get_width()) * 1.05
+		var sh_sy: float = float(CELL_SIZE) * bld_size.y / float(tex.get_height()) * 0.35
+		bshadow.scale = Vector2(sh_sx, sh_sy)
+		bshadow.position = world_pos + Vector2(CELL_SIZE * 0.15, CELL_SIZE * bld_size.y * 0.4)
+		bshadow.modulate = Color(0, 0, 0, 0.22)
+		bshadow.z_index = 0
+		add_child(bshadow)
+		_building_sprites[bld.get_instance_id() + 500000] = bshadow
 	var spr := Sprite2D.new()
 	spr.texture = tex
 	var scale_x: float = float(CELL_SIZE) * bld_size.x / float(tex.get_width())
@@ -1511,6 +1591,7 @@ func _try_render_building_sprite(bld: Building) -> bool:
 	spr.z_index = 1
 	if bld.def_name == "Wall":
 		spr.modulate = Color(1.25, 1.2, 1.15)
+		spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(spr)
 	_building_sprites[bld.get_instance_id()] = spr
 	if bld.def_name == "Wall":
@@ -1624,29 +1705,29 @@ func _build_tileset() -> void:
 	_tileset.tile_size = Vector2i(CELL_SIZE, CELL_SIZE)
 
 	var terrain_colors: Dictionary = {
-		"Soil": Color(0.64, 0.52, 0.36),
-		"SoilRich": Color(0.52, 0.43, 0.26),
-		"Sand": Color(0.86, 0.80, 0.60),
-		"Gravel": Color(0.62, 0.58, 0.52),
-		"MarshyTerrain": Color(0.44, 0.50, 0.34),
-		"Mud": Color(0.52, 0.40, 0.28),
-		"Ice": Color(0.90, 0.94, 0.98),
-		"WaterShallow": Color(0.34, 0.52, 0.70),
-		"WaterDeep": Color(0.22, 0.35, 0.56),
-		"RoughStone": Color(0.65, 0.63, 0.58),
-		"Mountain": Color(0.50, 0.47, 0.44),
-		"Cave": Color(0.34, 0.32, 0.30),
+		"Soil": Color(0.37, 0.30, 0.24),
+		"SoilRich": Color(0.28, 0.23, 0.19),
+		"Sand": Color(0.49, 0.43, 0.36),
+		"Gravel": Color(0.36, 0.29, 0.22),
+		"MarshyTerrain": Color(0.28, 0.26, 0.22),
+		"Mud": Color(0.29, 0.22, 0.18),
+		"Ice": Color(0.75, 0.80, 0.85),
+		"WaterShallow": Color(0.24, 0.38, 0.52),
+		"WaterDeep": Color(0.16, 0.26, 0.42),
+		"RoughStone": Color(0.42, 0.40, 0.36),
+		"Mountain": Color(0.38, 0.35, 0.32),
+		"Cave": Color(0.24, 0.22, 0.20),
 		"OreGold": Color(0.90, 0.82, 0.30),
 		"OreUranium": Color(0.48, 0.78, 0.48),
 		"OreJade": Color(0.40, 0.74, 0.52),
 		"OrePlasteel": Color(0.72, 0.84, 0.92),
 		"OreSteel": Color(0.65, 0.72, 0.78),
 		"OreCompacted": Color(0.60, 0.60, 0.58),
-		"WoodFloor": Color(0.62, 0.47, 0.30),
-		"Concrete": Color(0.68, 0.68, 0.65),
+		"WoodFloor": Color(0.58, 0.44, 0.28),
+		"Concrete": Color(0.55, 0.55, 0.52),
 		"Carpet": Color(0.68, 0.32, 0.32),
-		"StoneTile": Color(0.72, 0.70, 0.66),
-		"SterileTile": Color(0.82, 0.84, 0.82),
+		"StoneTile": Color(0.62, 0.60, 0.56),
+		"SterileTile": Color(0.72, 0.74, 0.72),
 	}
 	_floor_to_tile = {
 		"WoodPlank": "WoodFloor",
@@ -2034,6 +2115,13 @@ func _load_building_textures() -> void:
 	if FileAccess.file_exists(wall_abs):
 		var atlas_img := Image.new()
 		if atlas_img.load(wall_abs) == OK:
+			if atlas_img.get_format() != Image.FORMAT_RGBA8:
+				atlas_img.convert(Image.FORMAT_RGBA8)
+			for py: int in atlas_img.get_height():
+				for px: int in atlas_img.get_width():
+					var c := atlas_img.get_pixel(px, py)
+					if c.get_luminance() < 0.12:
+						atlas_img.set_pixel(px, py, Color(0, 0, 0, 0))
 			var tile_w: int = atlas_img.get_width() / 4
 			var tile_h: int = atlas_img.get_height() / 4
 			for row: int in 4:
@@ -2919,34 +3007,57 @@ func _update_day_night(hour: int) -> void:
 		color = Color(0.88, 0.72, 0.55).lerp(Color(0.55, 0.48, 0.50), p)
 	elif t >= 20.0 and t < 21.0:
 		var p: float = t - 20.0
-		color = Color(0.55, 0.48, 0.50).lerp(Color(0.22, 0.22, 0.32), p)
+		color = Color(0.55, 0.48, 0.50).lerp(Color(0.28, 0.28, 0.38), p)
 	elif t >= 21.0 or t < 4.0:
-		color = Color(0.18, 0.18, 0.28)
+		color = Color(0.28, 0.28, 0.38)
 	elif t >= 4.0 and t < 5.0:
 		var p: float = t - 4.0
-		color = Color(0.18, 0.18, 0.28).lerp(Color(0.28, 0.28, 0.42), p)
+		color = Color(0.28, 0.28, 0.38).lerp(Color(0.35, 0.35, 0.50), p)
 	else:
 		color = Color.WHITE
 	_day_night_mod.color = color
 	var night_factor: float = 1.0 - color.get_luminance()
-	var glow_scale: float = 1.0 + night_factor * 1.2
-	for key: int in _building_sprites:
-		if key >= 100000 and key < 200000:
-			var glow_spr: Sprite2D = _building_sprites[key] as Sprite2D
-			if glow_spr and is_instance_valid(glow_spr):
-				glow_spr.modulate.a = 0.4 + night_factor * 0.6
-				glow_spr.scale = Vector2(glow_scale * 1.1, glow_scale * 1.1)
+	var night_glow: float = pow(night_factor, 2) * 0.40
+	var glow_scale: float = 1.0 + night_factor * 0.25
+	for glow_spr: Sprite2D in _glow_sprites:
+		if glow_spr and is_instance_valid(glow_spr):
+			var intensity: float = glow_spr.get_meta("light_intensity", 0.10)
+			var final_a: float = night_glow * intensity
+			glow_spr.set_meta("base_alpha", final_a)
+			glow_spr.modulate.a = final_a
+			var base_s: float = glow_spr.get_meta("base_scale", 1.0)
+			glow_spr.scale = Vector2(base_s * glow_scale, base_s * glow_scale)
+			glow_spr.self_modulate = Color.WHITE
+	if _firefly_particles:
+		_firefly_particles.emitting = night_factor > 0.5
+	if _ambient_dust:
+		_ambient_dust.modulate.a = clampf(1.0 - night_factor * 1.5, 0.1, 1.0)
+
+
+func _update_light_flicker() -> void:
+	for glow_spr: Sprite2D in _glow_sprites:
+		if glow_spr and is_instance_valid(glow_spr):
+			var base_a: float = glow_spr.get_meta("base_alpha", 0.02)
+			var flicker: float = sin(_flicker_time * 3.5) * 0.06 + sin(_flicker_time * 7.1) * 0.04 + sin(_flicker_time * 11.3) * 0.02
+			glow_spr.modulate.a = clampf(base_a * (1.0 + flicker), 0.0, 1.0)
 
 
 var _sync_timer: float = 0.0
+var _flicker_time: float = 0.0
+var _things_dirty: bool = false
 
 func _process(delta: float) -> void:
+	if _things_dirty:
+		_things_dirty = false
+		_render_things()
 	_sync_timer += delta
+	_flicker_time += delta
 	if _sync_timer > 2.0:
 		_sync_timer = 0.0
 		ensure_pawn_sprites()
 		_ensure_animal_sprites()
 		_update_pawn_indicators()
+	_update_light_flicker()
 	var move := Vector2.ZERO
 	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A):
 		move.x -= 1
@@ -2974,6 +3085,10 @@ func _process(delta: float) -> void:
 		_rain_splash_particles.position = _camera.position
 	if _leaf_particles:
 		_leaf_particles.position = _camera.position + Vector2(0, -400)
+	if _firefly_particles and _firefly_particles.emitting:
+		_firefly_particles.position = _camera.position
+	if _ambient_dust:
+		_ambient_dust.position = _camera.position
 	if _fog_overlay and _fog_overlay.color.a > 0.0:
 		_fog_overlay.position = _camera.position - _fog_overlay.size / 2.0
 	_water_time += delta
@@ -3131,19 +3246,22 @@ func _render_terrain_blend() -> void:
 	var blend_img := Image.create(img_w, img_h, false, Image.FORMAT_RGBA8)
 	blend_img.fill(Color(0, 0, 0, 0))
 	var terrain_colors: Dictionary = {
-		"Soil": Color(0.64, 0.52, 0.36),
-		"SoilRich": Color(0.52, 0.43, 0.26),
-		"Sand": Color(0.86, 0.80, 0.60),
-		"Gravel": Color(0.62, 0.58, 0.52),
-		"MarshyTerrain": Color(0.44, 0.50, 0.34),
-		"Mud": Color(0.52, 0.40, 0.28),
-		"WaterShallow": Color(0.34, 0.52, 0.70),
-		"WaterDeep": Color(0.22, 0.35, 0.56),
-		"RoughStone": Color(0.65, 0.63, 0.58),
-		"Mountain": Color(0.50, 0.47, 0.44),
+		"Soil": Color(0.37, 0.30, 0.24),
+		"SoilRich": Color(0.28, 0.23, 0.19),
+		"Sand": Color(0.49, 0.43, 0.36),
+		"Gravel": Color(0.36, 0.29, 0.22),
+		"MarshyTerrain": Color(0.28, 0.26, 0.22),
+		"Mud": Color(0.29, 0.22, 0.18),
+		"WaterShallow": Color(0.24, 0.38, 0.52),
+		"WaterDeep": Color(0.16, 0.26, 0.42),
+		"RoughStone": Color(0.42, 0.40, 0.36),
+		"Mountain": Color(0.38, 0.35, 0.32),
 	}
-	const BLEND_PX: int = 6
+	const BLEND_PX: int = 10
+	var blend_rng := RandomNumberGenerator.new()
+	blend_rng.seed = 55555
 	var dirs: Array[Vector2i] = [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
+	var diag_dirs: Array[Vector2i] = [Vector2i(1,1), Vector2i(-1,1), Vector2i(1,-1), Vector2i(-1,-1)]
 	for y: int in h:
 		for x: int in w:
 			var cell: Cell = map_data.cells[y * w + x]
@@ -3161,32 +3279,72 @@ func _render_terrain_blend() -> void:
 				var ox := x * CELL_SIZE
 				var oy := y * CELL_SIZE
 				for step: int in BLEND_PX:
-					var alpha: float = 0.25 * (1.0 - float(step) / float(BLEND_PX))
-					var blend_col := Color(nb_col.r, nb_col.g, nb_col.b, alpha)
+					var base_alpha: float = 0.28 * (1.0 - float(step) / float(BLEND_PX))
 					if d == Vector2i(1, 0):
 						var px := CELL_SIZE - 1 - step
 						for py: int in CELL_SIZE:
-							var existing := blend_img.get_pixel(ox + px, oy + py)
+							var jitter: int = int(blend_rng.randf_range(-1.5, 1.5))
+							var actual_px := clampi(px + jitter, 0, CELL_SIZE - 1)
+							var alpha: float = base_alpha * (0.85 + blend_rng.randf() * 0.3)
+							var blend_col := Color(nb_col.r, nb_col.g, nb_col.b, alpha)
+							var existing := blend_img.get_pixel(ox + actual_px, oy + py)
 							if blend_col.a > existing.a:
-								blend_img.set_pixel(ox + px, oy + py, blend_col)
+								blend_img.set_pixel(ox + actual_px, oy + py, blend_col)
 					elif d == Vector2i(-1, 0):
 						var px := step
 						for py: int in CELL_SIZE:
-							var existing := blend_img.get_pixel(ox + px, oy + py)
+							var jitter: int = int(blend_rng.randf_range(-1.5, 1.5))
+							var actual_px := clampi(px + jitter, 0, CELL_SIZE - 1)
+							var alpha: float = base_alpha * (0.85 + blend_rng.randf() * 0.3)
+							var blend_col := Color(nb_col.r, nb_col.g, nb_col.b, alpha)
+							var existing := blend_img.get_pixel(ox + actual_px, oy + py)
 							if blend_col.a > existing.a:
-								blend_img.set_pixel(ox + px, oy + py, blend_col)
+								blend_img.set_pixel(ox + actual_px, oy + py, blend_col)
 					elif d == Vector2i(0, 1):
 						var py := CELL_SIZE - 1 - step
 						for px: int in CELL_SIZE:
-							var existing := blend_img.get_pixel(ox + px, oy + py)
+							var jitter: int = int(blend_rng.randf_range(-1.5, 1.5))
+							var actual_py := clampi(py + jitter, 0, CELL_SIZE - 1)
+							var alpha: float = base_alpha * (0.85 + blend_rng.randf() * 0.3)
+							var blend_col := Color(nb_col.r, nb_col.g, nb_col.b, alpha)
+							var existing := blend_img.get_pixel(ox + px, oy + actual_py)
 							if blend_col.a > existing.a:
-								blend_img.set_pixel(ox + px, oy + py, blend_col)
+								blend_img.set_pixel(ox + px, oy + actual_py, blend_col)
 					elif d == Vector2i(0, -1):
 						var py := step
 						for px: int in CELL_SIZE:
-							var existing := blend_img.get_pixel(ox + px, oy + py)
+							var jitter: int = int(blend_rng.randf_range(-1.5, 1.5))
+							var actual_py := clampi(py + jitter, 0, CELL_SIZE - 1)
+							var alpha: float = base_alpha * (0.85 + blend_rng.randf() * 0.3)
+							var blend_col := Color(nb_col.r, nb_col.g, nb_col.b, alpha)
+							var existing := blend_img.get_pixel(ox + px, oy + actual_py)
 							if blend_col.a > existing.a:
-								blend_img.set_pixel(ox + px, oy + py, blend_col)
+								blend_img.set_pixel(ox + px, oy + actual_py, blend_col)
+			for dd: Vector2i in diag_dirs:
+				var dnx := x + dd.x
+				var dny := y + dd.y
+				if dnx < 0 or dnx >= w or dny < 0 or dny >= h:
+					continue
+				var dnc: Cell = map_data.cells[dny * w + dnx]
+				var dnb_terrain := _terrain_key(dnc)
+				if dnb_terrain == my_terrain:
+					continue
+				var dnb_col: Color = terrain_colors.get(dnb_terrain, Color(0.5, 0.5, 0.5))
+				var dox := x * CELL_SIZE
+				var doy := y * CELL_SIZE
+				var corner_size: int = BLEND_PX * 2 / 3
+				for step_x: int in corner_size:
+					for step_y: int in corner_size:
+						var dist: float = sqrt(float(step_x * step_x + step_y * step_y))
+						if dist > corner_size:
+							continue
+						var alpha: float = 0.18 * (1.0 - dist / float(corner_size))
+						var cpx: int = (CELL_SIZE - 1 - step_x) if dd.x > 0 else step_x
+						var cpy: int = (CELL_SIZE - 1 - step_y) if dd.y > 0 else step_y
+						var blend_col := Color(dnb_col.r, dnb_col.g, dnb_col.b, alpha)
+						var existing := blend_img.get_pixel(dox + cpx, doy + cpy)
+						if blend_col.a > existing.a:
+							blend_img.set_pixel(dox + cpx, doy + cpy, blend_col)
 	var seam_rng := RandomNumberGenerator.new()
 	seam_rng.seed = 77777
 	for y: int in h:
@@ -3195,6 +3353,7 @@ func _render_terrain_blend() -> void:
 			var my_t := _terrain_key(cell_s)
 			if cell_s.is_mountain:
 				continue
+			var my_col: Color = terrain_colors.get(my_t, Color(0.35, 0.30, 0.25))
 			for d_s: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 				var sx := x + d_s.x
 				var sy := y + d_s.y
@@ -3207,19 +3366,27 @@ func _render_terrain_blend() -> void:
 				var oy_s := y * CELL_SIZE
 				if d_s == Vector2i(1, 0):
 					for py_s: int in CELL_SIZE:
-						var noise_s: float = seam_rng.randf_range(-0.03, 0.03)
-						var avg_col := Color(0.5 + noise_s, 0.48 + noise_s, 0.42 + noise_s, 0.12)
-						blend_img.set_pixel(ox_s + CELL_SIZE - 1, oy_s + py_s, avg_col)
-						if seam_rng.randf() < 0.5:
-							blend_img.set_pixel(mini(ox_s + CELL_SIZE, img_w - 1), oy_s + py_s, Color(avg_col.r, avg_col.g, avg_col.b, 0.06))
+						var noise_s: float = seam_rng.randf_range(-0.02, 0.02)
+						for sp: int in 2:
+							var px_s: int = CELL_SIZE - 1 - sp
+							var a: float = 0.15 - float(sp) * 0.06
+							var avg_col := Color(my_col.r + noise_s, my_col.g + noise_s, my_col.b + noise_s * 0.7, a)
+							if ox_s + px_s < img_w:
+								blend_img.set_pixel(ox_s + px_s, oy_s + py_s, avg_col)
+						if seam_rng.randf() < 0.4 and ox_s + CELL_SIZE < img_w:
+							blend_img.set_pixel(ox_s + CELL_SIZE, oy_s + py_s, Color(my_col.r, my_col.g, my_col.b, 0.08))
 				else:
 					for px_s: int in CELL_SIZE:
-						var noise_s: float = seam_rng.randf_range(-0.03, 0.03)
-						var avg_col := Color(0.5 + noise_s, 0.48 + noise_s, 0.42 + noise_s, 0.12)
-						blend_img.set_pixel(ox_s + px_s, oy_s + CELL_SIZE - 1, avg_col)
-						if seam_rng.randf() < 0.5:
-							blend_img.set_pixel(ox_s + px_s, mini(oy_s + CELL_SIZE, img_h - 1), Color(avg_col.r, avg_col.g, avg_col.b, 0.06))
-	const CLIFF_PX: int = 10
+						var noise_s: float = seam_rng.randf_range(-0.02, 0.02)
+						for sp: int in 2:
+							var py_s: int = CELL_SIZE - 1 - sp
+							var a: float = 0.15 - float(sp) * 0.06
+							var avg_col := Color(my_col.r + noise_s, my_col.g + noise_s, my_col.b + noise_s * 0.7, a)
+							if oy_s + py_s < img_h:
+								blend_img.set_pixel(ox_s + px_s, oy_s + py_s, avg_col)
+						if seam_rng.randf() < 0.4 and oy_s + CELL_SIZE < img_h:
+							blend_img.set_pixel(ox_s + px_s, oy_s + CELL_SIZE, Color(my_col.r, my_col.g, my_col.b, 0.08))
+	const CLIFF_PX: int = 12
 	for y: int in h:
 		for x: int in w:
 			var cell: Cell = map_data.cells[y * w + x]
@@ -3235,11 +3402,11 @@ func _render_terrain_blend() -> void:
 					continue
 				var nox := nx * CELL_SIZE
 				var noy := ny * CELL_SIZE
-				var ao_depth: float = 0.50 if d.y == 1 else (0.40 if d.x == 1 else 0.25)
+				var ao_depth: float = 0.60 if d.y == 1 else (0.48 if d.x == 1 else 0.30)
 				for step: int in CLIFF_PX:
 					var t: float = 1.0 - float(step) / float(CLIFF_PX)
-					var alpha: float = ao_depth * t * t
-					var shadow_col := Color(0.02, 0.01, 0.05, alpha)
+					var alpha: float = ao_depth * t * t * t
+					var shadow_col := Color(0.02, 0.01, 0.04, alpha)
 					if d == Vector2i(0, 1):
 						var py := step
 						for px: int in CELL_SIZE:
@@ -3301,11 +3468,11 @@ func _render_grass_overlay() -> void:
 	rng.seed = map_data.seed + 33333
 	var soil_terrains: PackedStringArray = ["Soil", "SoilRich", "MarshyTerrain", "Gravel"]
 	var grass_colors: Array[Color] = [
-		Color(0.42, 0.50, 0.24, 0.22),
-		Color(0.46, 0.52, 0.28, 0.20),
-		Color(0.38, 0.46, 0.22, 0.18),
-		Color(0.50, 0.54, 0.32, 0.16),
-		Color(0.44, 0.48, 0.26, 0.20),
+		Color(0.38, 0.52, 0.22, 0.35),
+		Color(0.42, 0.55, 0.25, 0.32),
+		Color(0.35, 0.48, 0.20, 0.30),
+		Color(0.45, 0.56, 0.28, 0.28),
+		Color(0.40, 0.50, 0.23, 0.33),
 	]
 	for y: int in h:
 		for x: int in w:
@@ -3314,20 +3481,20 @@ func _render_grass_overlay() -> void:
 				continue
 			var ox := x * CELL_SIZE
 			var oy := y * CELL_SIZE
-			var density: float = 0.40 if tname == "SoilRich" else (0.32 if tname == "Soil" else (0.22 if tname == "MarshyTerrain" else 0.10))
+			var density: float = 0.55 if tname == "SoilRich" else (0.42 if tname == "Soil" else (0.28 if tname == "MarshyTerrain" else 0.12))
 			for py: int in CELL_SIZE:
 				for px: int in CELL_SIZE:
 					if rng.randf() < density:
 						var gc: Color = grass_colors[rng.randi() % grass_colors.size()]
 						var noise: float = rng.randf_range(-0.04, 0.04)
 						grass_img.set_pixel(ox + px, oy + py, Color(gc.r + noise, gc.g + noise, gc.b + noise * 0.5, gc.a))
-			var blade_count: int = rng.randi_range(5, 12) if tname in ["Soil", "SoilRich"] else rng.randi_range(2, 5)
+			var blade_count: int = rng.randi_range(8, 16) if tname in ["Soil", "SoilRich"] else rng.randi_range(3, 7)
 			for _bi: int in blade_count:
 				var bx: int = ox + rng.randi_range(1, CELL_SIZE - 2)
 				var by: int = oy + rng.randi_range(0, CELL_SIZE - 5)
-				var bh: int = rng.randi_range(3, 6)
+				var bh: int = rng.randi_range(3, 7)
 				var bw: int = 1 + rng.randi() % 2
-				var blade_col := Color(0.36 + rng.randf() * 0.12, 0.44 + rng.randf() * 0.12, 0.20 + rng.randf() * 0.08, 0.40 + rng.randf() * 0.20)
+				var blade_col := Color(0.32 + rng.randf() * 0.14, 0.46 + rng.randf() * 0.14, 0.18 + rng.randf() * 0.10, 0.50 + rng.randf() * 0.25)
 				for bpy: int in bh:
 					var target_y: int = by + bh - 1 - bpy
 					var fade: float = 1.0 - float(bpy) / float(bh)

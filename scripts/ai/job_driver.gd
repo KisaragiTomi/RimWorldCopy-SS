@@ -152,7 +152,7 @@ func get_driver_summary() -> Dictionary:
 func get_driver_ecosystem_health() -> float:
 	var forecast := minf(get_completion_forecast(), 100.0)
 	var rating := get_efficiency_rating()
-	var r_val: float = 90.0 if rating == "Excellent" else (70.0 if rating == "Good" else (40.0 if rating == "Average" else 15.0))
+	var r_val: float = 90.0 if rating == "Fast" else (70.0 if rating == "Normal" else (40.0 if rating == "Slow" else 15.0))
 	var progress := get_progress_pct()
 	return snapped((forecast + r_val + progress) / 3.0, 0.1)
 

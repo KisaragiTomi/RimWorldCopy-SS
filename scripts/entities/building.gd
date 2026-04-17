@@ -73,7 +73,7 @@ func _parse_costs(data: Dictionary) -> void:
 		match mat_name:
 			"Wood": cost_list["Wood"] = amount
 			"Steel": cost_list["Steel"] = amount
-			"Components": cost_list["Component"] = amount
+			"Components": cost_list["Components"] = amount
 			"Plasteel": cost_list["Plasteel"] = amount
 			"Gold": cost_list["Gold"] = amount
 			_: cost_list[mat_name] = amount
@@ -89,6 +89,8 @@ func _apply_fallback() -> void:
 func place_blueprint() -> void:
 	build_state = BuildState.BLUEPRINT
 	build_work_left = build_work_total
+	if cost_list.is_empty():
+		build_state = BuildState.FRAME
 
 
 func needs_materials() -> bool:
@@ -234,7 +236,7 @@ func get_efficiency() -> float:
 
 
 func get_total_cost_value() -> float:
-	var values: Dictionary = {"Wood": 1.2, "Steel": 1.9, "Component": 32.0, "Plasteel": 9.0, "Gold": 10.0}
+	var values: Dictionary = {"Wood": 1.2, "Steel": 1.9, "Components": 32.0, "Plasteel": 9.0, "Gold": 10.0}
 	var total: float = 0.0
 	for mat: String in cost_list:
 		total += cost_list[mat] * values.get(mat, 1.0)
@@ -343,7 +345,7 @@ func get_building_ecosystem_health() -> float:
 	var maint_inv := maxf(100.0 - get_maintenance_priority(), 0.0)
 	var roi := minf(get_roi_score() * 10.0, 100.0)
 	var risk := get_structural_risk()
-	var r_val: float = 90.0 if risk == "Minimal" else (65.0 if risk == "Low" else (35.0 if risk == "Moderate" else 15.0))
+	var r_val: float = 90.0 if risk == "Low" else (65.0 if risk == "Moderate" else (35.0 if risk == "High" else 15.0))
 	return snapped((maint_inv + roi + r_val) / 3.0, 0.1)
 
 func get_construction_governance() -> String:

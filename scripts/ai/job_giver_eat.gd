@@ -4,7 +4,7 @@ extends ThinkNode
 ## Finds food items on the map and issues eat jobs when hungry.
 ## Prefers meals > paste > raw, avoids spoiled food unless desperate.
 
-const HUNGER_THRESHOLD := 0.25
+const HUNGER_THRESHOLD := 0.4
 const DESPERATE_THRESHOLD := 0.08
 const FOOD_DEFS: PackedStringArray = [
 	"MealFine", "MealSimple", "MealLavish", "NutrientPaste",
@@ -22,9 +22,7 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	var best_food: Item = null
 	var best_score: float = -999.0
 
-	for thing: Thing in ThingManager.things:
-		if not (thing is Item):
-			continue
+	for thing: Thing in ThingManager.get_items():
 		var item: Item = thing as Item
 		if item.state != Thing.ThingState.SPAWNED:
 			continue

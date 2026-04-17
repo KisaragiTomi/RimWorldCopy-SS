@@ -67,7 +67,6 @@ const MAX_HISTORY: int = 30
 func _ready() -> void:
 	_rng.seed = 108
 	if TickManager:
-		TickManager.tick.connect(_on_tick)
 		TickManager.rare_tick.connect(_on_rare_tick)
 
 
@@ -75,17 +74,15 @@ func set_biome(biome: String) -> void:
 	_current_biome = biome
 
 
-func _on_tick(_tick: int) -> void:
+func _on_rare_tick(_tick: int) -> void:
 	var ended: Array[String] = []
 	for etype: String in _active_events:
-		_active_events[etype].ticks_left -= 1
+		_active_events[etype].ticks_left -= 250
 		if _active_events[etype].ticks_left <= 0:
 			ended.append(etype)
 	for etype: String in ended:
 		_end_event(etype)
 
-
-func _on_rare_tick(_tick: int) -> void:
 	_try_trigger_event()
 
 

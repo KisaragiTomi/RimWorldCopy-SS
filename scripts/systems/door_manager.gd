@@ -99,16 +99,16 @@ func get_path_cost_modifier(pos: Vector2i) -> float:
 
 func _ready() -> void:
 	if TickManager:
-		TickManager.tick.connect(_on_tick)
+		TickManager.rare_tick.connect(_on_rare_tick)
 
 
-func _on_tick(_tick: int) -> void:
+func _on_rare_tick(_tick: int) -> void:
 	for pos: Vector2i in _doors:
 		var d: Dictionary = _doors[pos]
 		if d.held_open:
 			continue
 		if d.open and d.close_timer > 0:
-			d.close_timer -= 1
+			d.close_timer -= 250
 			if d.close_timer <= 0:
 				d.open = false
 	_check_proximity_opens()

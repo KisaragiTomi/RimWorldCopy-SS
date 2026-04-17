@@ -38,7 +38,7 @@ func _ready() -> void:
 	_rng.seed = randi()
 	_schedule_next_change()
 	if TickManager:
-		TickManager.tick.connect(_on_tick)
+		TickManager.rare_tick.connect(_on_rare_tick)
 
 
 func get_current_weather() -> String:
@@ -69,8 +69,8 @@ func is_outdoor_dangerous() -> bool:
 	return current_weather in ["Thunderstorm", "Hail", "Snow"]
 
 
-func _on_tick(_tick: int) -> void:
-	_ticks_until_change -= 1
+func _on_rare_tick(_tick: int) -> void:
+	_ticks_until_change -= 250
 	if _ticks_until_change <= 0:
 		_change_weather()
 

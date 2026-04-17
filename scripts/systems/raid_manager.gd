@@ -123,6 +123,8 @@ func _get_edge_pos(map: MapData, edge: String) -> Vector2i:
 func _on_tick(_current_tick: int) -> void:
 	if not raid_active:
 		return
+	if _current_tick % 3 != 0:
+		return
 
 	var alive := active_raiders.filter(func(r: Pawn) -> bool: return not r.dead and not r.downed)
 	if alive.is_empty():

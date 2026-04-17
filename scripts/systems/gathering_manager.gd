@@ -49,7 +49,6 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.seed = 99
 	if TickManager:
-		TickManager.tick.connect(_on_tick)
 		TickManager.rare_tick.connect(_on_rare_tick)
 
 
@@ -84,18 +83,16 @@ func start_gathering(gtype: String, pos: Vector2i, participant_ids: Array[int]) 
 	return true
 
 
-func _on_tick(_tick: int) -> void:
+func _on_rare_tick(_tick: int) -> void:
 	var ended: Array[String] = []
 	for gtype: String in _active_gathering:
-		_active_gathering[gtype].ticks_left -= 1
+		_active_gathering[gtype].ticks_left -= 250
 		if _active_gathering[gtype].ticks_left <= 0:
 			ended.append(gtype)
 
 	for gtype: String in ended:
 		_end_gathering(gtype)
 
-
-func _on_rare_tick(_tick: int) -> void:
 	_try_auto_party()
 
 

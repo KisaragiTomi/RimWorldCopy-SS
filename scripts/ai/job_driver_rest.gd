@@ -56,7 +56,7 @@ func _find_bed() -> void:
 	if BedManager:
 		_bed = BedManager.find_best_bed(pawn)
 		if _bed:
-			_rest_quality = BedManager.REST_QUALITY_BED
+			_rest_quality = BedManager.BED_QUALITY.get(_bed.def_name, 0.9)
 
 
 func _start_walk() -> void:

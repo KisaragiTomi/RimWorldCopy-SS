@@ -4,6 +4,8 @@ extends ThinkNode
 ## Issues a Chop job when there are plants designated for cutting.
 
 
+const AUTO_CHOP_DISTANCE := 60
+
 func try_issue_job(pawn: Pawn) -> Dictionary:
 	if pawn.drafted or pawn.dead or pawn.downed:
 		return {}
@@ -12,31 +14,70 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	if not ThingManager:
 		return {}
 
-	for t: Thing in ThingManager.things:
-		if not (t is Plant):
-			continue
+	var reserved := _get_reserved_chop_positions()
+
+	for t: Thing in ThingManager.get_plants():
 		var p := t as Plant
 		if not p.designated_cut:
 			continue
-
+		if reserved.has(t.grid_pos):
+			continue
 		var dist: int = absi(pawn.grid_pos.x - p.grid_pos.x) + absi(pawn.grid_pos.y - p.grid_pos.y)
 		if dist > 40:
 			continue
-
 		var job := Job.new()
 		job.job_def = "Chop"
 		job.target_pos = p.grid_pos
+		job.target_thing_id = t.id
 		return {"job": job}
 
-	return {}
+	return _try_auto_chop(pawn, reserved)
+
+
+func _try_auto_chop(pawn: Pawn, reserved: Dictionary) -> Dictionary:
+	var best: Plant = null
+	var best_dist: int = AUTO_CHOP_DISTANCE
+	for t: Thing in ThingManager.get_plants():
+		var p := t as Plant
+		if p.def_name != "Tree" or p.growth < 0.8:
+			continue
+		if p.is_sown:
+			continue
+		if reserved.has(t.grid_pos):
+			continue
+		var dist: int = absi(pawn.grid_pos.x - p.grid_pos.x) + absi(pawn.grid_pos.y - p.grid_pos.y)
+		if dist < best_dist:
+			best_dist = dist
+			best = p
+	if best == null:
+		return {}
+	var job := Job.new()
+	job.job_def = "Chop"
+	job.target_pos = best.grid_pos
+	job.target_thing_id = best.id
+	return {"job": job}
+
+
+func _get_reserved_chop_positions() -> Dictionary:
+	var reserved := {}
+	if not PawnManager:
+		return reserved
+	for p: Pawn in PawnManager.pawns:
+		if p.dead or p.downed:
+			continue
+		if p.current_job_name == "Chop" and PawnManager._drivers.has(p.id):
+			var driver = PawnManager._drivers[p.id]
+			if driver and driver.job:
+				reserved[driver.job.target_pos] = true
+	return reserved
 
 
 func get_designated_count() -> int:
 	if not ThingManager:
 		return 0
 	var cnt: int = 0
-	for t: Thing in ThingManager.things:
-		if t is Plant and (t as Plant).designated_cut:
+	for t: Thing in ThingManager.get_plants():
+		if (t as Plant).designated_cut:
 			cnt += 1
 	return cnt
 
@@ -46,8 +87,8 @@ func get_nearest_designated(from: Vector2i) -> Vector2i:
 		return Vector2i(-1, -1)
 	var best := Vector2i(-1, -1)
 	var best_dist: int = 999999
-	for t: Thing in ThingManager.things:
-		if t is Plant and (t as Plant).designated_cut:
+	for t: Thing in ThingManager.get_plants():
+		if (t as Plant).designated_cut:
 			var d: int = absi(t.grid_pos.x - from.x) + absi(t.grid_pos.y - from.y)
 			if d < best_dist:
 				best_dist = d
@@ -59,8 +100,8 @@ func get_estimated_wood_yield() -> int:
 	if not ThingManager:
 		return 0
 	var total: int = 0
-	for t: Thing in ThingManager.things:
-		if t is Plant and (t as Plant).designated_cut:
+	for t: Thing in ThingManager.get_plants():
+		if (t as Plant).designated_cut:
 			total += (t as Plant).harvest_yield
 	return total
 
@@ -69,8 +110,8 @@ func get_mature_tree_count() -> int:
 	if not ThingManager:
 		return 0
 	var cnt: int = 0
-	for t: Thing in ThingManager.things:
-		if t is Plant and (t as Plant).growth >= 1.0 and (t as Plant).harvest_yield > 0:
+	for t: Thing in ThingManager.get_plants():
+		if (t as Plant).growth >= 1.0 and (t as Plant).harvest_yield > 0:
 			cnt += 1
 	return cnt
 

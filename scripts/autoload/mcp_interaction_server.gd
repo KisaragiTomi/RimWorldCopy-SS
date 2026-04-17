@@ -366,27 +366,50 @@ func _cmd_click(params: Dictionary) -> void:
 	var y: float = float(params.get("y", 0))
 	var button: int = int(params.get("button", MOUSE_BUTTON_LEFT))
 
-	var pos: Vector2 = Vector2(x, y)
+	var viewport_pos: Vector2 = Vector2(x, y)
 
-	# Mouse button press
+	var hit_ctrl: Control = _find_control_at(get_tree().root, viewport_pos)
+	if hit_ctrl != null and button == MOUSE_BUTTON_LEFT:
+		if hit_ctrl is BaseButton:
+			(hit_ctrl as BaseButton).emit_signal("pressed")
+			_send_response({"success": true, "clicked": {"x": x, "y": y, "button": button, "hit": hit_ctrl.name, "hit_type": hit_ctrl.get_class()}})
+			return
+
+	var screen_transform: Transform2D = get_viewport().get_screen_transform()
+	var screen_pos: Vector2 = screen_transform * viewport_pos
+	Input.warp_mouse(screen_pos)
+
 	var press_event: InputEventMouseButton = InputEventMouseButton.new()
-	press_event.position = pos
-	press_event.global_position = pos
+	press_event.position = screen_pos
+	press_event.global_position = screen_pos
 	press_event.button_index = button as MouseButton
 	press_event.pressed = true
 	Input.parse_input_event(press_event)
 
-	# Wait a frame then release
 	await get_tree().process_frame
 
 	var release_event: InputEventMouseButton = InputEventMouseButton.new()
-	release_event.position = pos
-	release_event.global_position = pos
+	release_event.position = screen_pos
+	release_event.global_position = screen_pos
 	release_event.button_index = button as MouseButton
 	release_event.pressed = false
 	Input.parse_input_event(release_event)
 
-	_send_response({"success": true, "clicked": {"x": x, "y": y, "button": button}})
+	_send_response({"success": true, "clicked": {"x": x, "y": y, "button": button, "hit": hit_ctrl.name if hit_ctrl else "", "hit_type": hit_ctrl.get_class() if hit_ctrl else ""}})
+
+
+func _find_control_at(node: Node, pos: Vector2) -> Control:
+	var stack: Array[Node] = [get_tree().root]
+	var best: Control = null
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is BaseButton:
+			var btn: BaseButton = n as BaseButton
+			if btn.visible and btn.get_global_rect().has_point(pos):
+				best = btn
+		for c in n.get_children():
+			stack.append(c)
+	return best
 
 
 # --- Key Press ---
@@ -438,9 +461,12 @@ func _cmd_mouse_move(params: Dictionary) -> void:
 	var relative_x: float = float(params.get("relative_x", 0))
 	var relative_y: float = float(params.get("relative_y", 0))
 
+	var screen_transform: Transform2D = get_viewport().get_screen_transform()
+	var screen_pos: Vector2 = screen_transform * Vector2(x, y)
+
 	var event: InputEventMouseMotion = InputEventMouseMotion.new()
-	event.position = Vector2(x, y)
-	event.global_position = Vector2(x, y)
+	event.position = screen_pos
+	event.global_position = screen_pos
 	event.relative = Vector2(relative_x, relative_y)
 	Input.parse_input_event(event)
 
@@ -1294,6 +1320,9 @@ func _cmd_scroll(params: Dictionary) -> void:
 	var direction: String = params.get("direction", "up")
 	var amount: int = int(params.get("amount", 1))
 
+	var screen_transform: Transform2D = get_viewport().get_screen_transform()
+	var screen_pos: Vector2 = screen_transform * Vector2(x, y)
+
 	var button_index: int = MOUSE_BUTTON_WHEEL_UP
 	match direction:
 		"down":
@@ -1305,16 +1334,16 @@ func _cmd_scroll(params: Dictionary) -> void:
 
 	for i in amount:
 		var press_event: InputEventMouseButton = InputEventMouseButton.new()
-		press_event.position = Vector2(x, y)
-		press_event.global_position = Vector2(x, y)
+		press_event.position = screen_pos
+		press_event.global_position = screen_pos
 		press_event.button_index = button_index as MouseButton
 		press_event.pressed = true
 		press_event.factor = 1.0
 		Input.parse_input_event(press_event)
 
 		var release_event: InputEventMouseButton = InputEventMouseButton.new()
-		release_event.position = Vector2(x, y)
-		release_event.global_position = Vector2(x, y)
+		release_event.position = screen_pos
+		release_event.global_position = screen_pos
 		release_event.button_index = button_index as MouseButton
 		release_event.pressed = false
 		Input.parse_input_event(release_event)
@@ -1333,33 +1362,33 @@ func _cmd_mouse_drag(params: Dictionary) -> void:
 	if steps < 1:
 		steps = 1
 
+	var screen_transform: Transform2D = get_viewport().get_screen_transform()
 	var from_pos: Vector2 = Vector2(from_x, from_y)
 	var to_pos: Vector2 = Vector2(to_x, to_y)
+	var screen_from: Vector2 = screen_transform * from_pos
+	var screen_to: Vector2 = screen_transform * to_pos
 
-	# Press at start position
 	var press_event: InputEventMouseButton = InputEventMouseButton.new()
-	press_event.position = from_pos
-	press_event.global_position = from_pos
+	press_event.position = screen_from
+	press_event.global_position = screen_from
 	press_event.button_index = button as MouseButton
 	press_event.pressed = true
 	Input.parse_input_event(press_event)
 
-	# Lerp position over steps frames
 	for i in steps:
 		await get_tree().process_frame
 		var t: float = float(i + 1) / float(steps)
-		var current_pos: Vector2 = from_pos.lerp(to_pos, t)
+		var current_pos: Vector2 = screen_from.lerp(screen_to, t)
 		var move_event: InputEventMouseMotion = InputEventMouseMotion.new()
 		move_event.position = current_pos
 		move_event.global_position = current_pos
-		move_event.relative = (to_pos - from_pos) / float(steps)
+		move_event.relative = (screen_to - screen_from) / float(steps)
 		move_event.button_mask = MOUSE_BUTTON_MASK_LEFT if button == MOUSE_BUTTON_LEFT else 0
 		Input.parse_input_event(move_event)
 
-	# Release at end position
 	var release_event: InputEventMouseButton = InputEventMouseButton.new()
-	release_event.position = to_pos
-	release_event.global_position = to_pos
+	release_event.position = screen_to
+	release_event.global_position = screen_to
 	release_event.button_index = button as MouseButton
 	release_event.pressed = false
 	Input.parse_input_event(release_event)

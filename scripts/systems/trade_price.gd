@@ -9,7 +9,7 @@ const BASE_PRICES: Dictionary = {
 	"Silver": 1.0,
 	"Gold": 10.0,
 	"Plasteel": 9.0,
-	"Component": 32.0,
+	"Components": 32.0,
 	"RawFood": 0.5,
 	"Meal": 2.0,
 	"SimpleMeal": 1.5,
@@ -93,7 +93,7 @@ func get_items_by_category() -> Dictionary:
 		"food": ["RawFood", "Meal", "SimpleMeal"],
 		"medical": ["Medicine", "HerbalMed", "Penoxycyline"],
 		"drugs": ["Beer", "Smokeleaf", "GoJuice", "Yayo"],
-		"valuables": ["Silver", "Gold", "Component"],
+		"valuables": ["Silver", "Gold", "Components"],
 	}
 	return cats
 

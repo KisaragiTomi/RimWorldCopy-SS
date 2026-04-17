@@ -9,7 +9,7 @@ const LOOT_TABLES: Dictionary = {
 	"Pirate": [
 		{"item": "Silver", "min": 50, "max": 200},
 		{"item": "Steel", "min": 20, "max": 80},
-		{"item": "Component", "min": 1, "max": 5},
+		{"item": "Components", "min": 1, "max": 5},
 		{"item": "Medicine", "min": 1, "max": 3},
 		{"item": "Beer", "min": 5, "max": 15},
 	],
@@ -22,14 +22,14 @@ const LOOT_TABLES: Dictionary = {
 	],
 	"Mechanoid": [
 		{"item": "Plasteel", "min": 10, "max": 40},
-		{"item": "Component", "min": 3, "max": 10},
+		{"item": "Components", "min": 3, "max": 10},
 		{"item": "Steel", "min": 50, "max": 150},
 	],
 	"Empire": [
 		{"item": "Silver", "min": 100, "max": 500},
 		{"item": "Gold", "min": 5, "max": 20},
 		{"item": "Glitterworld Medicine", "min": 1, "max": 3},
-		{"item": "Component", "min": 2, "max": 8},
+		{"item": "Components", "min": 2, "max": 8},
 	],
 }
 

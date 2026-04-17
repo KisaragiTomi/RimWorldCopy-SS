@@ -508,7 +508,7 @@ func get_civilization_maturity_index() -> float:
 
 func get_draft_ecosystem_health() -> float:
 	var readiness := get_military_readiness()
-	var r_val: float = 90.0 if readiness == "Battle Ready" else (65.0 if readiness == "Alert" else (35.0 if readiness == "Weak" else 15.0))
+	var r_val: float = 90.0 if readiness == "Battle-Ready" else (65.0 if readiness == "Prepared" else (35.0 if readiness == "Undermanned" else 15.0))
 	var projection := minf(get_force_projection(), 100.0)
 	var depth := minf(get_reserve_depth(), 100.0)
 	return snapped((r_val + projection + depth) / 3.0, 0.1)
@@ -590,7 +590,7 @@ func _init_mock_resources() -> void:
 		{"name": "Steel", "count": 340, "category": "Items"},
 		{"name": "Wood", "count": 580, "category": "Items"},
 		{"name": "Plasteel", "count": 42, "category": "Items"},
-		{"name": "Component", "count": 18, "category": "Items"},
+		{"name": "Components", "count": 18, "category": "Items"},
 		{"name": "Gold", "count": 7, "category": "Items"},
 		{"name": "Cloth", "count": 125, "category": "Textiles"},
 		{"name": "Medicine", "count": 24, "category": "Medicine"},

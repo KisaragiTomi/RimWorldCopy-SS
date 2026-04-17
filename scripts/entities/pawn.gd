@@ -88,11 +88,16 @@ func _init_default_skills() -> void:
 		skills[s] = {"level": 0, "passion": 0, "xp": 0.0}
 
 
+var _need_decay_mod: float = 1.0
+
 func _init_default_needs() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = id * 7919 + 31
+	_need_decay_mod = rng.randf_range(0.8, 1.2)
 	needs = {
-		"Food": 1.0,
-		"Rest": 1.0,
-		"Joy": 0.5,
+		"Food": rng.randf_range(0.7, 1.0),
+		"Rest": rng.randf_range(0.7, 1.0),
+		"Joy": rng.randf_range(0.3, 0.6),
 		"Mood": 0.6,
 	}
 
@@ -315,9 +320,9 @@ func set_need(need_name: String, value: float) -> void:
 
 
 func tick_needs() -> void:
-	set_need("Food", get_need("Food") - 0.00075)
-	set_need("Rest", get_need("Rest") - 0.0005)
-	set_need("Joy", get_need("Joy") - 0.0004)
+	set_need("Food", get_need("Food") - 0.02 * _need_decay_mod)
+	set_need("Rest", get_need("Rest") - 0.03 * _need_decay_mod)
+	set_need("Joy", get_need("Joy") - 0.015 * _need_decay_mod)
 	if thought_tracker:
 		thought_tracker.tick()
 	_recalc_mood()

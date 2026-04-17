@@ -14,14 +14,15 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	if not _has_stockpile():
 		return {}
 
+	var reserved := _get_reserved_haul_ids()
 	var best_item: Thing = null
 	var best_dist: float = INF
 
-	for t: Thing in ThingManager.things:
-		if not (t is Item):
-			continue
+	for t: Thing in ThingManager.get_items():
 		var item := t as Item
 		if item.forbidden or item.hauled_by >= 0:
+			continue
+		if reserved.has(t.id):
 			continue
 		if not _needs_hauling(item):
 			continue
@@ -36,6 +37,20 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	var j := Job.new("Haul", best_item.grid_pos)
 	j.target_thing_id = best_item.id
 	return {"job": j, "source": self}
+
+
+func _get_reserved_haul_ids() -> Dictionary:
+	var reserved := {}
+	if not PawnManager:
+		return reserved
+	for p: Pawn in PawnManager.pawns:
+		if p.dead or p.downed:
+			continue
+		if p.current_job_name == "Haul" and PawnManager._drivers.has(p.id):
+			var driver = PawnManager._drivers[p.id]
+			if driver and driver.job:
+				reserved[driver.job.target_thing_id] = true
+	return reserved
 
 
 func _has_stockpile() -> bool:

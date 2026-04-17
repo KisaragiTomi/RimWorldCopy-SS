@@ -3,6 +3,8 @@ extends ThinkNode
 
 ## Issues sow/harvest jobs for plants in growing zones.
 
+const MAX_WORK_DISTANCE := 60.0
+
 func try_issue_job(pawn: Pawn) -> Dictionary:
 	if not pawn.is_capable_of("Growing"):
 		return {}
@@ -20,16 +22,18 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	return sow_job
 
 
+
 func _find_harvest(pawn: Pawn) -> Dictionary:
 	if not ThingManager:
 		return {}
+	var reserved := _get_reserved_harvest_ids()
 	var best: Thing = null
-	var best_dist: float = INF
-	for t: Thing in ThingManager.things:
-		if not (t is Plant):
-			continue
+	var best_dist: float = MAX_WORK_DISTANCE
+	for t: Thing in ThingManager.get_plants():
 		var p := t as Plant
 		if p.growth_stage != Plant.GrowthStage.HARVESTABLE:
+			continue
+		if reserved.has(t.id):
 			continue
 		var d := pawn.grid_pos.distance_to(p.grid_pos) as float
 		if d < best_dist:
@@ -48,7 +52,7 @@ func _find_sow_spot(pawn: Pawn) -> Dictionary:
 		return {}
 	var reserved := _get_reserved_sow_positions()
 	var best_pos := Vector2i(-1, -1)
-	var best_dist: float = INF
+	var best_dist: float = MAX_WORK_DISTANCE
 	for pos: Vector2i in ZoneManager.zones:
 		if ZoneManager.zones[pos] != "GrowingZone":
 			continue
@@ -83,6 +87,20 @@ func _get_reserved_sow_positions() -> Dictionary:
 	return reserved
 
 
+func _get_reserved_harvest_ids() -> Dictionary:
+	var reserved := {}
+	if not PawnManager:
+		return reserved
+	for p: Pawn in PawnManager.pawns:
+		if p.dead or p.downed:
+			continue
+		if p.current_job_name == "Harvest" and PawnManager._drivers.has(p.id):
+			var driver = PawnManager._drivers[p.id]
+			if driver and driver.job:
+				reserved[driver.job.target_thing_id] = true
+	return reserved
+
+
 var _plant_cache: Dictionary = {}
 var _cache_tick: int = -1
 
@@ -90,8 +108,7 @@ func _has_plant_at(pos: Vector2i) -> bool:
 	var cur_tick: int = TickManager.current_tick if TickManager else 0
 	if _cache_tick != cur_tick:
 		_plant_cache.clear()
-		for t: Thing in ThingManager.things:
-			if t is Plant:
-				_plant_cache[t.grid_pos] = true
+		for t: Thing in ThingManager.get_plants():
+			_plant_cache[t.grid_pos] = true
 		_cache_tick = cur_tick
 	return _plant_cache.has(pos)

@@ -9,8 +9,8 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	if not ThingManager:
 		return {}
 
-	var best_deliver: Building = null
-	var best_deliver_dist: int = 9999
+	var reserved := _get_reserved_build_ids()
+	var candidates_deliver: Array[Array] = []
 	var best_build: Building = null
 	var best_build_dist: int = 9999
 
@@ -22,21 +22,24 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 			continue
 		if b.state == Thing.ThingState.DESTROYED:
 			continue
+		if reserved.has(b.id):
+			continue
 		var dist: int = absi(b.grid_pos.x - pawn.grid_pos.x) + absi(b.grid_pos.y - pawn.grid_pos.y)
 
 		if b.needs_materials():
-			if dist < best_deliver_dist:
-				best_deliver_dist = dist
-				best_deliver = b
+			candidates_deliver.append([dist, b])
 		else:
 			if dist < best_build_dist:
 				best_build_dist = dist
 				best_build = b
 
-	if best_deliver and _has_available_materials(best_deliver):
-		var j := Job.new("DeliverResources", best_deliver.grid_pos)
-		j.target_thing_id = best_deliver.id
-		return {"job": j, "source": self}
+	candidates_deliver.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	for entry: Array in candidates_deliver:
+		var b: Building = entry[1] as Building
+		if _has_available_materials(b):
+			var j := Job.new("DeliverResources", b.grid_pos)
+			j.target_thing_id = b.id
+			return {"job": j, "source": self}
 
 	if best_build:
 		var j := Job.new("Construct", best_build.grid_pos)
@@ -44,6 +47,20 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 		return {"job": j, "source": self}
 
 	return {}
+
+
+func _get_reserved_build_ids() -> Dictionary:
+	var reserved := {}
+	if not PawnManager:
+		return reserved
+	for p: Pawn in PawnManager.pawns:
+		if p.dead or p.downed:
+			continue
+		if (p.current_job_name == "Construct" or p.current_job_name == "DeliverResources") and PawnManager._drivers.has(p.id):
+			var driver = PawnManager._drivers[p.id]
+			if driver and driver.job:
+				reserved[driver.job.target_thing_id] = true
+	return reserved
 
 
 func _has_available_materials(building: Building) -> bool:

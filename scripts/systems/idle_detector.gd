@@ -16,14 +16,10 @@ var _longest_idle_pawn: String = ""
 
 func _ready() -> void:
 	if TickManager:
-		TickManager.tick.connect(_on_tick)
+		TickManager.rare_tick.connect(_on_rare_tick)
 
 
-func _on_tick(_tick: int) -> void:
-	_check_counter += 1
-	if _check_counter < CHECK_INTERVAL:
-		return
-	_check_counter = 0
+func _on_rare_tick(_tick: int) -> void:
 	_update_idle_status()
 
 

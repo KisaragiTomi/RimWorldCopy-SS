@@ -40,16 +40,18 @@ func extinguish(pos: Vector2i) -> void:
 
 
 func _on_tick(_tick: int) -> void:
+	if _tick % 5 != 0:
+		return
 	var to_remove: Array[Vector2i] = []
 	var is_raining: bool = _is_raining()
 
 	for pos: Vector2i in fires:
 		var fire: Dictionary = fires[pos]
-		fire["ticks"] = fire.get("ticks", 0) + 1
+		fire["ticks"] = fire.get("ticks", 0) + 5
 
-		var growth: float = 0.001
+		var growth: float = 0.005
 		if is_raining:
-			growth = -0.003
+			growth = -0.015
 		fire["intensity"] = clampf(fire.get("intensity", 0.3) + growth, 0.0, 1.0)
 
 		if fire.get("intensity", 0.0) <= 0.0 or fire.get("ticks", 0) > 3000:
@@ -94,8 +96,8 @@ func _apply_fire_damage(pos: Vector2i, fire: Dictionary) -> void:
 		return
 
 	var intensity: float = fire.get("intensity", 0.3)
-	for t: Thing in ThingManager.things:
-		if t.grid_pos == pos and t.state == Thing.ThingState.SPAWNED:
+	for t: Thing in ThingManager.get_things_at(pos):
+		if t.state == Thing.ThingState.SPAWNED:
 			t.hit_points -= roundi(intensity * 10.0)
 			if t.hit_points <= 0:
 				ThingManager.destroy_thing(t)
@@ -211,9 +213,10 @@ func get_max_fire_intensity() -> float:
 	if fires.is_empty():
 		return 0.0
 	var mx: float = 0.0
-	for v: float in fires.values():
-		if v > mx:
-			mx = v
+	for fire_data: Dictionary in fires.values():
+		var intensity: float = fire_data.get("intensity", 0.0)
+		if intensity > mx:
+			mx = intensity
 	return mx
 
 
@@ -309,7 +312,7 @@ func get_infrastructure_vulnerability() -> float:
 func get_fire_suppression_capacity() -> String:
 	var ext_rate := get_extinguish_rate()
 	var danger := get_fire_danger_index()
-	if ext_rate >= 0.8 and danger in ["Low", "Minimal"]:
+	if ext_rate >= 0.8 and danger < 10.0:
 		return "Excellent"
 	elif ext_rate >= 0.5:
 		return "Adequate"
@@ -320,8 +323,8 @@ func get_fire_suppression_capacity() -> String:
 func get_colony_fire_resilience() -> String:
 	var readiness := get_response_readiness()
 	var containment := get_containment_effectiveness()
-	if readiness in ["Ready", "Prepared"] and containment in ["Effective", "Strong"]:
+	if readiness in ["Standby", "Controlled"] and containment >= 70.0:
 		return "Resilient"
-	elif readiness in ["Ready", "Prepared"]:
+	elif readiness in ["Standby", "Controlled"]:
 		return "Moderate"
 	return "Vulnerable"

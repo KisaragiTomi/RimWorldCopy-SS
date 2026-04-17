@@ -54,11 +54,13 @@ func _on_toil_tick(toil_name: String) -> void:
 func _start_walk() -> void:
 	var pf: Pathfinder = PawnManager.get_pathfinder() if PawnManager else null
 	if pf == null:
+		_unassign_queue_entry()
 		end_job(false)
 		return
 	pawn.path = pf.find_path(pawn.grid_pos, job.target_pos)
 	pawn.path_index = 0
 	if pawn.path.is_empty():
+		_unassign_queue_entry()
 		end_job(false)
 
 
@@ -72,6 +74,7 @@ func _walk_tick() -> void:
 
 func _consume_materials() -> void:
 	if not CraftingManager or not CraftingManager.consume_ingredients(_recipe_name):
+		_unassign_queue_entry()
 		end_job(false)
 		return
 	_advance_toil()
@@ -79,10 +82,12 @@ func _consume_materials() -> void:
 
 func _finish_craft() -> void:
 	if not CraftingManager:
+		_unassign_queue_entry()
 		end_job(false)
 		return
 	var result: Dictionary = CraftingManager.complete_craft(_recipe_name, pawn)
 	if result.is_empty():
+		_unassign_queue_entry()
 		end_job(false)
 		return
 
@@ -90,6 +95,21 @@ func _finish_craft() -> void:
 		ThingManager.spawn_item_stacks(result.get("item", "Unknown"), result.get("count", 1), pawn.grid_pos)
 
 	end_job(true)
+
+
+func end_job(success: bool) -> void:
+	if not success:
+		_unassign_queue_entry()
+	super.end_job(success)
+
+
+func _unassign_queue_entry() -> void:
+	if not CraftingManager:
+		return
+	for entry: Dictionary in CraftingManager.craft_queue:
+		if entry.get("recipe", "") == _recipe_name and entry.get("assigned", false):
+			entry["assigned"] = false
+			break
 
 
 func _get_map() -> MapData:

@@ -3,7 +3,7 @@ extends ThinkNode
 
 ## Issues rest jobs when pawn is exhausted, targeting an available bed if possible.
 
-const REST_THRESHOLD := 0.2
+const REST_THRESHOLD := 0.40
 
 func try_issue_job(pawn: Pawn) -> Dictionary:
 	if pawn.get_need("Rest") > REST_THRESHOLD:

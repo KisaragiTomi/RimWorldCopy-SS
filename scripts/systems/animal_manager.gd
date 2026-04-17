@@ -34,6 +34,8 @@ func spawn_wildlife(map: MapData, count: int = 15) -> void:
 
 
 func _on_tick(_tick: int) -> void:
+	if _tick % 5 != 0:
+		return
 	var map: MapData = GameState.get_map() if GameState else null
 	if map == null:
 		return
@@ -49,8 +51,10 @@ func _on_long_tick(_tick: int) -> void:
 		i -= 1
 
 	var map: MapData = GameState.get_map() if GameState else null
-	if map and animals.size() < 10 and _rng.randf() < 0.2:
-		spawn_wildlife(map, _rng.randi_range(2, 5))
+	if map and animals.size() < 5:
+		spawn_wildlife(map, _rng.randi_range(3, 6))
+	elif map and animals.size() < 10 and _rng.randf() < 0.4:
+		spawn_wildlife(map, _rng.randi_range(2, 4))
 
 
 func get_hostile_animals() -> Array[Animal]:

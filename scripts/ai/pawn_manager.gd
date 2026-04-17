@@ -35,14 +35,14 @@ func _build_think_tree() -> void:
 	_think_tree.add_child_node(JobGiverDoctor.new())
 	_think_tree.add_child_node(JobGiverRest.new())
 	_think_tree.add_child_node(JobGiverEat.new())
-	_think_tree.add_child_node(JobGiverJoy.new())
+	_think_tree.add_child_node(JobGiverJoy.new())         # order 65 (Joy - before work when need is low)
 	_think_tree.add_child_node(JobGiverCook.new())       # order 70
 	_think_tree.add_child_node(JobGiverHunt.new())        # order 80
 	_think_tree.add_child_node(JobGiverConstruct.new())   # order 90
+	_think_tree.add_child_node(JobGiverCraft.new())       # order 95 (Crafting - high when orders exist)
 	_think_tree.add_child_node(JobGiverSow.new())         # order 100 (Growing)
 	_think_tree.add_child_node(JobGiverMine.new())        # order 110
 	_think_tree.add_child_node(JobGiverChop.new())        # order 120
-	_think_tree.add_child_node(JobGiverCraft.new())       # order 150
 	_think_tree.add_child_node(JobGiverHaul.new())        # order 160
 	_think_tree.add_child_node(JobGiverClean.new())       # order 170
 	_think_tree.add_child_node(JobGiverResearch.new())    # order 180
@@ -167,15 +167,14 @@ func _tick_plants() -> void:
 		return
 	var interval: int = TickManager.RARE_INTERVAL if TickManager else 250
 	var map: MapData = GameState.get_map() if GameState else null
-	for t: Thing in ThingManager.things:
-		if t is Plant:
-			var p := t as Plant
-			var fertility: float = 1.0
-			if map:
-				var cell := map.get_cell(p.grid_pos.x, p.grid_pos.y)
-				if cell:
-					fertility = cell.fertility
-			p.tick_growth(fertility, interval)
+	for t: Thing in ThingManager.get_plants():
+		var p := t as Plant
+		var fertility: float = 1.0
+		if map:
+			var cell := map.get_cell(p.grid_pos.x, p.grid_pos.y)
+			if cell:
+				fertility = cell.fertility
+		p.tick_growth(fertility, interval)
 
 
 func _tick_item_decay() -> void:
@@ -185,11 +184,10 @@ func _tick_item_decay() -> void:
 	if WeatherManager:
 		temp += WeatherManager.get_temp_offset()
 	var to_destroy: Array[Thing] = []
-	for t: Thing in ThingManager.things:
-		if t is Item:
-			var item := t as Item
-			if item.tick_decay(temp):
-				to_destroy.append(t)
+	for t: Thing in ThingManager.get_items():
+		var item := t as Item
+		if item.tick_decay(temp):
+			to_destroy.append(t)
 	var rot_counts: Dictionary = {}
 	for t: Thing in to_destroy:
 		rot_counts[t.label] = rot_counts.get(t.label, 0) + 1
@@ -211,12 +209,12 @@ func _tick_pawn_healing() -> void:
 			continue
 		if p.health:
 			p.health.tick_healing()
-		if p.downed and p.health.should_recover_from_downed():
-			p.downed = false
-			p.current_job_name = ""
-			p.set_meta("being_rescued", false)
-			if ColonyLog:
-				ColonyLog.add_entry("Health", "%s has recovered." % p.pawn_name, "info")
+			if p.downed and p.health.should_recover_from_downed():
+				p.downed = false
+				p.current_job_name = ""
+				p.set_meta("being_rescued", false)
+				if ColonyLog:
+					ColonyLog.add_entry("Health", "%s has recovered." % p.pawn_name, "info")
 
 
 func _cleanup_driver(p: Pawn) -> void:
@@ -243,12 +241,12 @@ func _tick_pawn(p: Pawn) -> void:
 	var driver: JobDriver = _drivers.get(p.id)
 	if driver and not driver.ended:
 		if not (driver is JobDriverFight) and _should_interrupt_for_combat(p):
-			driver.ended = true
+			driver.end_job(false)
 			_drivers.erase(p.id)
 			_try_start_job(p)
 			return
 		if _should_interrupt_for_needs(p, driver):
-			driver.ended = true
+			driver.end_job(false)
 			_drivers.erase(p.id)
 			_try_start_job(p)
 			return
@@ -264,12 +262,17 @@ func _tick_pawn(p: Pawn) -> void:
 	_try_start_job(p)
 
 
-const CRITICAL_FOOD := 0.15
-const CRITICAL_REST := 0.1
+const CRITICAL_FOOD := 0.25
+const CRITICAL_REST := 0.2
 
 func _should_interrupt_for_needs(p: Pawn, driver: JobDriver) -> bool:
 	if driver is JobDriverEat or driver is JobDriverRest:
 		return false
+	if driver is JobDriverWander or driver is JobDriverJoy:
+		if p.get_need("Food") < 0.4:
+			return true
+		if p.get_need("Rest") < 0.40:
+			return true
 	if p.get_need("Food") < CRITICAL_FOOD:
 		return true
 	if p.get_need("Rest") < CRITICAL_REST:

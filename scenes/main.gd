@@ -11,7 +11,7 @@ func _ready() -> void:
 	var win := get_window()
 	if win:
 		win.min_size = Vector2i(1100, 620)
-	switch_to_main_menu()
+	switch_to_game()
 
 
 func switch_to_main_menu() -> void:

@@ -70,7 +70,7 @@ func _tick_repair() -> void:
 
 
 func _finish() -> void:
-	var skill: int = pawn.get_skill("Construction") if pawn else 0
+	var skill: int = pawn.get_skill_level("Construction") if pawn else 0
 	var xp: float = 25.0 + skill * 1.5
 	pawn.gain_xp("Construction", xp)
 	if ColonyLog:

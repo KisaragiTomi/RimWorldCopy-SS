@@ -16,13 +16,20 @@ var incident_history: Array[Dictionary] = []
 var total_incidents: int = 0
 
 const COOLDOWN_TICKS: Dictionary = {
-	"Raid": 45000, "Disease": 20000, "WandererJoin": 8000,
+	"Raid": 45000, "Disease": 20000, "WandererJoin": 30000,
 	"Eclipse": 15000, "Blight": 10000, "AnimalHerd": 8000,
 	"PsychicDrone": 12000, "ManInBlack": 20000,
 }
 
 const WANDERER_NAMES := ["Riley", "Jordan", "Quinn", "Blake", "Morgan", "Casey",
-	"Avery", "Taylor", "Drew", "Reese", "Parker", "Sage"]
+	"Avery", "Taylor", "Drew", "Reese", "Parker", "Sage",
+	"Logan", "Skyler", "Rowan", "Finley", "Harper", "Ellis",
+	"Hayden", "Addison", "Charlie", "Emery", "Dakota", "Kendall",
+	"River", "Phoenix", "Oakley", "Lennox", "Marlowe", "Salem",
+	"Ash", "Harley", "Remy", "Peyton", "Shiloh", "Zion",
+	"Briar", "Indigo", "Wren", "Sawyer", "Kai", "Soren",
+	"Cypress", "Lark", "Juniper", "Hollis", "Vale", "Sutton",
+	"Sterling", "Haven"]
 
 const DROP_RESOURCES := ["Steel", "Wood", "Components", "Silver", "Gold", "Plasteel"]
 
@@ -31,7 +38,7 @@ func _ready() -> void:
 	_rng.seed = randi()
 	_schedule_next()
 	if TickManager:
-		TickManager.tick.connect(_on_tick)
+		TickManager.rare_tick.connect(_on_rare_tick)
 		TickManager.long_tick.connect(_on_long_tick)
 
 
@@ -71,7 +78,7 @@ func _record_incident(event_name: String, data: Dictionary) -> void:
 	incident_fired.emit(event_name, data)
 
 
-func _on_tick(current_tick: int) -> void:
+func _on_rare_tick(current_tick: int) -> void:
 	if current_tick >= _next_incident_tick:
 		_fire_random_incident()
 		_schedule_next()
@@ -84,6 +91,7 @@ func _on_long_tick(_tick: int) -> void:
 	if current_day == _last_day:
 		return
 	_last_day = current_day
+	_ensure_beds()
 
 	var wealth := _calc_colony_wealth()
 	var pawn_count: int = 0
@@ -144,7 +152,7 @@ func _calc_colony_wealth() -> float:
 
 
 const RANDOM_EVENTS: Array[Dictionary] = [
-	{"name": "WandererJoin", "weight": 15, "min_day": 0, "category": "positive"},
+	{"name": "WandererJoin", "weight": 6, "min_day": 3, "category": "positive"},
 	{"name": "ResourceDrop", "weight": 20, "min_day": 0, "category": "positive"},
 	{"name": "TemperatureShift", "weight": 15, "min_day": 3, "category": "neutral"},
 	{"name": "AnimalHerd", "weight": 10, "min_day": 2, "category": "positive"},
@@ -155,8 +163,14 @@ const RANDOM_EVENTS: Array[Dictionary] = [
 ]
 
 
+func _get_total_elapsed_days() -> int:
+	if not TickManager:
+		return 0
+	return TickManager.current_tick / (TickManager.TICKS_PER_HOUR * TickManager.HOURS_PER_DAY)
+
+
 func _fire_random_incident() -> void:
-	var current_day: int = GameState.game_date.get("day", 0) if GameState else 0
+	var current_day: int = _get_total_elapsed_days()
 	var eligible: Array[Dictionary] = []
 	var total_weight: float = 0.0
 	for ev: Dictionary in RANDOM_EVENTS:
@@ -187,19 +201,75 @@ func _fire_random_incident() -> void:
 		"PsychicDrone": _incident_psychic_drone()
 
 
+const MAX_COLONISTS: int = 6
+
 func _incident_wanderer_join() -> void:
 	if not PawnManager or _is_on_cooldown("WandererJoin"):
+		return
+	var alive_count: int = 0
+	for existing: Pawn in PawnManager.pawns:
+		if not existing.dead and (not existing.has_meta("faction") or existing.get_meta("faction") != "enemy"):
+			alive_count += 1
+	if alive_count >= MAX_COLONISTS:
 		return
 	var p := Pawn.new()
 	p.pawn_name = _pick_unique_name()
 	p.age = _rng.randi_range(18, 55)
 	var map: MapData = GameState.get_map() if GameState else null
 	if map:
-		var edge_x: int = 3 if _rng.randf() < 0.5 else map.width - 4
-		var edge_y: int = _rng.randi_range(10, map.height - 10)
-		p.set_grid_pos(Vector2i(edge_x, edge_y))
+		var center := Vector2i(map.width / 2, map.height / 2)
+		var spawn_pos := center
+		for _attempt: int in 20:
+			var dx: int = _rng.randi_range(-10, 10)
+			var dy: int = _rng.randi_range(-10, 10)
+			var candidate := center + Vector2i(dx, dy)
+			if map.in_bounds(candidate.x, candidate.y):
+				var cell := map.get_cell_v(candidate)
+				if cell and cell.is_passable():
+					spawn_pos = candidate
+					break
+		p.set_grid_pos(spawn_pos)
 	PawnManager.add_pawn(p)
 	_record_incident("WandererJoin", {"pawn_name": p.pawn_name})
+	_ensure_beds()
+
+
+func _ensure_beds() -> void:
+	if not ThingManager or not PawnManager:
+		return
+	var map: MapData = GameState.get_map() if GameState else null
+	if not map:
+		return
+	var bed_count: int = 0
+	var bed_center := Vector2i(map.width / 2, map.height / 2)
+	for t: Thing in ThingManager._buildings:
+		if t.def_name == "Bed":
+			bed_count += 1
+			bed_center = Vector2i(t.grid_pos.x, t.grid_pos.y)
+	var alive: int = 0
+	for p: Pawn in PawnManager.pawns:
+		if not p.dead and (not p.has_meta("faction") or p.get_meta("faction") != "enemy"):
+			alive += 1
+	var deficit: int = alive - bed_count + 2
+	if deficit <= 0:
+		return
+	var placed: int = 0
+	for ring: int in range(1, 10):
+		if placed >= deficit:
+			break
+		for dx: int in range(-ring, ring + 1):
+			for dy: int in range(-ring, ring + 1):
+				if abs(dx) != ring and abs(dy) != ring:
+					continue
+				if placed >= deficit:
+					break
+				var pos := bed_center + Vector2i(dx, dy)
+				if not map.in_bounds(pos.x, pos.y):
+					continue
+				var cell := map.get_cell_v(pos)
+				if cell and cell.is_passable() and not cell.building:
+					ThingManager.place_blueprint("Bed", pos)
+					placed += 1
 
 
 func _incident_resource_drop() -> void:

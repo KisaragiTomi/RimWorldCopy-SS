@@ -11,7 +11,7 @@ const PRIORITY_MAP: Dictionary = {
 	"SimpleMeal": HaulPriority.URGENT,
 	"HerbalMed": HaulPriority.URGENT,
 	"Medicine": HaulPriority.HIGH,
-	"Component": HaulPriority.HIGH,
+	"Components": HaulPriority.HIGH,
 	"Steel": HaulPriority.NORMAL,
 	"Wood": HaulPriority.NORMAL,
 	"Silver": HaulPriority.HIGH,

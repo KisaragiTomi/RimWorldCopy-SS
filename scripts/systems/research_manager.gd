@@ -69,7 +69,9 @@ func _start_next_queued() -> void:
 
 func _on_rare_tick(_tick: int) -> void:
 	if current_project.is_empty():
-		return
+		_auto_start_cheapest()
+		if current_project.is_empty():
+			return
 	var proj := DefDB.get_def("ResearchProjectDef", current_project) if DefDB else {}
 	if proj.is_empty():
 		return
@@ -133,6 +135,38 @@ func get_progress_pct(project_name: String) -> float:
 		return 0.0
 	var cost: float = proj.get("baseCost", 1000)
 	return clampf(_progress.get(project_name, 0.0) / cost, 0.0, 1.0)
+
+
+func _auto_start_cheapest() -> void:
+	if not research_queue.is_empty():
+		_start_next_queued()
+		return
+	var avail := get_available_projects()
+	if avail.is_empty():
+		_start_repeatable()
+		return
+	var best_name: String = avail[0]
+	var best_cost: float = 999999.0
+	for pname: String in avail:
+		var proj := DefDB.get_def("ResearchProjectDef", pname) if DefDB else {}
+		var cost: float = proj.get("baseCost", 999999.0)
+		if cost < best_cost:
+			best_cost = cost
+			best_name = pname
+	start_project(best_name)
+
+
+func _start_repeatable() -> void:
+	for proj: Dictionary in get_all_projects():
+		if not proj.get("repeatable", false):
+			continue
+		var pname: String = proj.get("defName", "")
+		if pname.is_empty():
+			continue
+		_completed.erase(pname)
+		_progress[pname] = 0.0
+		start_project(pname)
+		return
 
 
 func get_available_projects() -> Array[String]:

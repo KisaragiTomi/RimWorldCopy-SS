@@ -52,11 +52,11 @@ var _break_history: Array[Dictionary] = []
 func _ready() -> void:
 	_rng.seed = 61
 	if TickManager:
-		TickManager.tick.connect(_on_tick)
 		TickManager.rare_tick.connect(_on_rare_tick)
 
 
 func _on_rare_tick(_tick: int) -> void:
+	_on_rare_tick_breaks()
 	if not PawnManager:
 		return
 	for p: Pawn in PawnManager.pawns:
@@ -111,11 +111,11 @@ func _start_break(pawn: Pawn, btype: String) -> void:
 		ColonyLog.add_entry("MentalBreak", pawn.pawn_name + ": " + def.label + "!", "danger")
 
 
-func _on_tick(_tick: int) -> void:
+func _on_rare_tick_breaks() -> void:
 	var ended_pids: Array[int] = []
 	for pid: int in _active_breaks:
 		var entry: Dictionary = _active_breaks[pid]
-		entry.ticks_left -= 1
+		entry.ticks_left -= 250
 		if entry.ticks_left <= 0:
 			ended_pids.append(pid)
 			continue

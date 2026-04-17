@@ -42,13 +42,13 @@ static func _apply_armor(target: Pawn, raw_damage: float, damage_type: String) -
 	return maxf(1.0, raw_damage * (1.0 - reduction))
 
 
-static func _check_kill(target: Pawn, attacker: Pawn) -> bool:
+static func _check_kill(target: Pawn, attacker: Pawn, skill_type: String = "Shooting") -> bool:
 	if target.dead:
 		return false
 	if target.health and target.health.should_be_dead():
 		target.dead = true
 		total_kills += 1
-		attacker.gain_xp("Shooting", 100.0)
+		attacker.gain_xp(skill_type, 100.0)
 		if ColonyLog:
 			ColonyLog.add_entry("Combat", "%s killed %s." % [attacker.pawn_name, target.pawn_name], "danger")
 		if target.has_meta("faction") and target.get_meta("faction") == "enemy":
@@ -101,7 +101,7 @@ static func ranged_attack(attacker: Pawn, target: Pawn, weapon_damage: float = 8
 	total_hits += 1
 	attacker.gain_xp("Shooting", 20.0)
 
-	var killed := _check_kill(target, attacker)
+	var killed := _check_kill(target, attacker, "Shooting")
 	return {"hit": true, "part": hit_part.name, "damage": final_damage, "hediff": hediff, "killed": killed, "crit": is_crit}
 
 
@@ -139,7 +139,7 @@ static func melee_attack(attacker: Pawn, target: Pawn, weapon_damage: float = 10
 	total_hits += 1
 	attacker.gain_xp("Melee", 25.0)
 
-	var killed := _check_kill(target, attacker)
+	var killed := _check_kill(target, attacker, "Melee")
 	return {"hit": true, "part": hit_part.name, "damage": final_damage, "hediff": hediff, "killed": killed}
 
 

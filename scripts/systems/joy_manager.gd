@@ -94,7 +94,7 @@ func pick_activity(pawn: Pawn) -> String:
 		var def: Dictionary = JOY_ACTIVITIES[act]
 		if def.has("skill_bonus"):
 			var skill_name: String = def["skill_bonus"]
-			var skill_level: int = pawn.get_skill(skill_name) if pawn else 0
+			var skill_level: int = pawn.get_skill_level(skill_name) if pawn else 0
 			weight *= 1.0 + skill_level * 0.05
 		weighted.append({"name": act, "weight": weight})
 

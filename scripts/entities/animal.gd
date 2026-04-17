@@ -55,10 +55,13 @@ func set_pos(new_pos: Vector2i) -> void:
 func tick(map: MapData, rng: RandomNumberGenerator) -> void:
 	if dead:
 		return
-	hunger -= 0.0002
+	hunger -= 0.00003
 	if hunger <= 0.0:
 		dead = true
 		return
+
+	if hunger < 0.5 and rng.randf() < 0.01:
+		hunger = minf(hunger + 0.15, 1.0)
 
 	if rng.randf() < 0.03:
 		_wander(map, rng)

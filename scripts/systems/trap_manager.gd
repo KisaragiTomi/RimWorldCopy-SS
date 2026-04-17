@@ -29,7 +29,7 @@ const TRAP_DEFS: Dictionary = {
 		"damage_type": "Bomb",
 		"rearmable": false,
 		"rearm_work": 0,
-		"build_cost": {"Steel": 2, "Component": 1},
+		"build_cost": {"Steel": 2, "Components": 1},
 		"color": [0.70, 0.35, 0.25],
 	},
 }
@@ -45,7 +45,7 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.seed = 73
 	if TickManager:
-		TickManager.tick.connect(_on_tick)
+		TickManager.rare_tick.connect(_on_rare_tick)
 
 
 func place_trap(pos: Vector2i, def_name: String, building_id: int) -> bool:
@@ -81,7 +81,7 @@ func rearm_trap(pos: Vector2i) -> bool:
 	return true
 
 
-func _on_tick(_tick: int) -> void:
+func _on_rare_tick(_tick: int) -> void:
 	_check_triggers()
 
 

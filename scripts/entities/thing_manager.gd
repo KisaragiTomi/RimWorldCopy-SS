@@ -7,12 +7,32 @@ signal thing_spawned(thing: Thing)
 signal thing_destroyed(thing: Thing)
 
 var things: Array[Thing] = []
+var _plants: Array[Thing] = []
+var _items: Array[Thing] = []
+var _buildings: Array[Thing] = []
 var _grid: Dictionary = {}  # "x,y" -> Array[Thing]
 
+
+func get_plants() -> Array[Thing]:
+	return _plants
+
+func get_items() -> Array[Thing]:
+	return _items
 
 func spawn_thing(thing: Thing, pos: Vector2i) -> void:
 	thing.spawn_at(pos)
 	things.append(thing)
+	if thing is Plant:
+		_plants.append(thing)
+	elif thing is Item:
+		_items.append(thing)
+	elif thing is Building:
+		_buildings.append(thing)
+		var b := thing as Building
+		if b.power_draw > 0.0 and PowerConsumption:
+			PowerConsumption.register_building(b.id, b.def_name, pos)
+		if TurretAI and TurretAI.has_method("register_turret"):
+			TurretAI.register_turret(b.id, b.def_name, pos)
 	var key := _key(pos)
 	if not _grid.has(key):
 		_grid[key] = []
@@ -23,6 +43,16 @@ func spawn_thing(thing: Thing, pos: Vector2i) -> void:
 func remove_thing(thing: Thing) -> void:
 	thing.destroy()
 	things.erase(thing)
+	if thing is Plant:
+		_plants.erase(thing)
+	elif thing is Item:
+		_items.erase(thing)
+	elif thing is Building:
+		_buildings.erase(thing)
+		if PowerConsumption:
+			PowerConsumption.unregister_building(thing.id)
+		if TurretAI and TurretAI.has_method("unregister_turret"):
+			TurretAI.unregister_turret(thing.id)
 	var key := _key(thing.grid_pos)
 	if _grid.has(key):
 		_grid[key].erase(thing)
@@ -77,41 +107,37 @@ func cancel_blueprint(pos: Vector2i) -> void:
 
 func get_blueprints() -> Array[Building]:
 	var arr: Array[Building] = []
-	for t: Thing in things:
-		if t is Building:
-			var b: Building = t as Building
-			if b.build_state != Building.BuildState.COMPLETE:
-				arr.append(b)
+	for t: Thing in _buildings:
+		var b: Building = t as Building
+		if b.build_state != Building.BuildState.COMPLETE:
+			arr.append(b)
 	return arr
 
 
 func get_buildings() -> Array[Building]:
 	var arr: Array[Building] = []
-	for t: Thing in things:
-		if t is Building:
-			var b: Building = t as Building
-			if b.build_state == Building.BuildState.COMPLETE:
-				arr.append(b)
+	for t: Thing in _buildings:
+		var b: Building = t as Building
+		if b.build_state == Building.BuildState.COMPLETE:
+			arr.append(b)
 	return arr
 
 
 func get_items_of_type(item_def: String) -> Array[Item]:
 	var arr: Array[Item] = []
-	for t: Thing in things:
-		if t is Item:
-			var item: Item = t as Item
-			if item.def_name == item_def and item.state == Thing.ThingState.SPAWNED:
-				arr.append(item)
+	for t: Thing in _items:
+		var item: Item = t as Item
+		if item.def_name == item_def and item.state == Thing.ThingState.SPAWNED:
+			arr.append(item)
 	return arr
 
 
 func count_items(item_def: String) -> int:
 	var total: int = 0
-	for t: Thing in things:
-		if t is Item:
-			var item: Item = t as Item
-			if item.def_name == item_def and item.state == Thing.ThingState.SPAWNED:
-				total += item.stack_count
+	for t: Thing in _items:
+		var item: Item = t as Item
+		if item.def_name == item_def and item.state == Thing.ThingState.SPAWNED:
+			total += item.stack_count
 	return total
 
 

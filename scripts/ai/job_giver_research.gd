@@ -14,14 +14,10 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 		return {}
 	if not ResearchManager:
 		return {}
+	if ResearchManager.get_available_projects().is_empty() and ResearchManager.current_project.is_empty():
+		return {}
 	if ResearchManager.current_project.is_empty():
-		if ResearchManager.has_method("get_available_projects"):
-			var avail: Array = ResearchManager.get_available_projects()
-			if avail.is_empty():
-				return {}
-			if ResearchManager.research_queue.is_empty():
-				return {}
-		else:
+		if ResearchManager.research_queue.is_empty():
 			return {}
 
 	var bench_pos := _find_research_bench()
@@ -37,7 +33,7 @@ func get_research_bench_count() -> int:
 		return 0
 	var cnt: int = 0
 	for t: Thing in ThingManager.things:
-		if t is Building and t.def_name in ["HiTechResearchBench", "SimpleResearchBench"]:
+		if t is Building and t.def_name in ["HiTechResearchBench", "SimpleResearchBench", "ResearchBench"]:
 			if (t as Building).build_state == Building.BuildState.COMPLETE:
 				cnt += 1
 	return cnt
@@ -71,12 +67,12 @@ func get_best_researcher() -> Dictionary:
 func _find_research_bench() -> Vector2i:
 	if not ThingManager:
 		return Vector2i(-1, -1)
-	for t: Thing in ThingManager.things:
-		if t is Building and t.def_name == "HiTechResearchBench":
+	for t: Thing in ThingManager._buildings:
+		if t.def_name == "HiTechResearchBench":
 			if (t as Building).build_state == Building.BuildState.COMPLETE:
 				return t.grid_pos
-	for t: Thing in ThingManager.things:
-		if t is Building and t.def_name == "SimpleResearchBench":
+	for t: Thing in ThingManager._buildings:
+		if t.def_name in ["SimpleResearchBench", "ResearchBench"]:
 			if (t as Building).build_state == Building.BuildState.COMPLETE:
 				return t.grid_pos
 	return Vector2i(-1, -1)

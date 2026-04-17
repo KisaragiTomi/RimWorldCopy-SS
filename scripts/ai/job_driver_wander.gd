@@ -12,7 +12,7 @@ func _make_toils() -> Array[Dictionary]:
 		{
 			"name": "wait",
 			"complete_mode": "delay",
-			"delay_ticks": 500,
+			"delay_ticks": 150,
 		},
 	]
 

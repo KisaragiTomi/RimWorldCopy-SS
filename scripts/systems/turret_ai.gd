@@ -60,10 +60,12 @@ func unregister_turret(building_id: int) -> void:
 
 
 func _on_tick(_tick: int) -> void:
+	if _tick % 3 != 0:
+		return
 	for tid: int in _turrets:
 		var turret: Dictionary = _turrets[tid]
 		if turret.fire_cooldown > 0:
-			turret.fire_cooldown -= 1
+			turret.fire_cooldown -= 3
 			continue
 		_try_fire(tid, turret)
 

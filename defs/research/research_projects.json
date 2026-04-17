@@ -70,5 +70,213 @@
     "baseCost": 1000,
     "prerequisites": ["Electricity"],
     "unlocks": ["MiniTurret"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Fabrication",
+    "label": "Fabrication",
+    "description": "Fabricate advanced components and parts.",
+    "baseCost": 3500,
+    "prerequisites": ["Machining"],
+    "unlocks": ["FabricationBench"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Geothermal",
+    "label": "Geothermal Power",
+    "description": "Tap into geothermal vents for reliable power.",
+    "baseCost": 2000,
+    "prerequisites": ["Electricity"],
+    "unlocks": ["GeothermalGenerator"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "HospitalBeds",
+    "label": "Hospital Beds",
+    "description": "Construct specialized beds for faster patient recovery.",
+    "baseCost": 1200,
+    "prerequisites": ["MedicineProduction"],
+    "unlocks": ["HospitalBed"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "VitalsMonitor",
+    "label": "Vitals Monitor",
+    "description": "Monitor patient vital signs for improved treatment.",
+    "baseCost": 2500,
+    "prerequisites": ["Microelectronics", "HospitalBeds"],
+    "unlocks": ["VitalsMonitor"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "FlakArmor",
+    "label": "Flak Armor",
+    "description": "Produce ballistic armor for colonist protection.",
+    "baseCost": 1500,
+    "prerequisites": ["Smithing"],
+    "unlocks": ["FlakVest", "FlakJacket"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "LongRangeScanner",
+    "label": "Long-Range Mineral Scanner",
+    "description": "Scan for distant mineral deposits.",
+    "baseCost": 4000,
+    "prerequisites": ["Microelectronics"],
+    "unlocks": ["LongRangeMineralScanner"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Devilstrand",
+    "label": "Devilstrand",
+    "description": "Cultivate Devilstrand mushrooms for strong textiles.",
+    "baseCost": 600,
+    "prerequisites": [],
+    "unlocks": ["DevilstrandSeed"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "SolarPanels",
+    "label": "Solar Panels",
+    "description": "Generate power from sunlight.",
+    "baseCost": 1600,
+    "prerequisites": ["Electricity"],
+    "unlocks": ["SolarGenerator"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "PassiveCooler",
+    "label": "Passive Cooler",
+    "description": "Cool rooms without electricity using evaporative cooling.",
+    "baseCost": 400,
+    "prerequisites": [],
+    "unlocks": ["PassiveCooler"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Brewing",
+    "label": "Brewing",
+    "description": "Brew beer from hops for colonist recreation.",
+    "baseCost": 800,
+    "prerequisites": [],
+    "unlocks": ["BreweryVat"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "AirConditioning",
+    "label": "Air Conditioning",
+    "description": "Cool or heat rooms with powered climate control.",
+    "baseCost": 2000,
+    "prerequisites": ["Electricity"],
+    "unlocks": ["Cooler", "Heater"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Carpeting",
+    "label": "Carpeting",
+    "description": "Produce soft carpet floors for improved comfort and beauty.",
+    "baseCost": 600,
+    "prerequisites": [],
+    "unlocks": ["Carpet"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "TransportPods",
+    "label": "Transport Pods",
+    "description": "Launch colonists and supplies across the map.",
+    "baseCost": 5000,
+    "prerequisites": ["Fabrication"],
+    "unlocks": ["TransportPodLauncher"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "MultiAnalyzer",
+    "label": "Multi-Analyzer",
+    "description": "Construct a multi-analyzer for advanced research.",
+    "baseCost": 4000,
+    "prerequisites": ["Microelectronics"],
+    "unlocks": ["MultiAnalyzer"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "ShipBasics",
+    "label": "Ship Basics",
+    "description": "Understand the fundamental principles of starship construction.",
+    "baseCost": 8000,
+    "prerequisites": ["Fabrication", "Microelectronics"],
+    "unlocks": ["ShipStructuralBeam"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "ShipEngine",
+    "label": "Ship Engine",
+    "description": "Build a Johnson-Tanaka drive for interstellar travel.",
+    "baseCost": 8000,
+    "prerequisites": ["ShipBasics"],
+    "unlocks": ["ShipEngine"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "ShipSensor",
+    "label": "Ship Sensor Cluster",
+    "description": "Build sensor arrays for deep-space navigation.",
+    "baseCost": 6000,
+    "prerequisites": ["ShipBasics"],
+    "unlocks": ["ShipSensorCluster"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "ShipComputer",
+    "label": "Ship Cryptosleep Casket",
+    "description": "Build cryptosleep caskets for long-duration space travel.",
+    "baseCost": 6000,
+    "prerequisites": ["ShipBasics"],
+    "unlocks": ["ShipCryptosleepCasket"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "ShipReactor",
+    "label": "Ship Reactor",
+    "description": "Build a fusion reactor to power the starship.",
+    "baseCost": 10000,
+    "prerequisites": ["ShipEngine"],
+    "unlocks": ["ShipReactor"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "AdvancedFabrication",
+    "label": "Advanced Fabrication",
+    "description": "Manufacture advanced components and mechanoid parts.",
+    "baseCost": 6000,
+    "prerequisites": ["Fabrication"],
+    "unlocks": ["AdvancedComponentAssembly"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "ChargedShot",
+    "label": "Charged Shot",
+    "description": "Build weapons using charged shot technology.",
+    "baseCost": 5000,
+    "prerequisites": ["Microelectronics"],
+    "unlocks": ["ChargeRifle"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "Bionics",
+    "label": "Bionics",
+    "description": "Construct advanced bionic prosthetics.",
+    "baseCost": 4000,
+    "prerequisites": ["Fabrication"],
+    "unlocks": ["BionicArm", "BionicLeg"]
+  },
+  {
+    "defType": "ResearchProjectDef",
+    "defName": "ArcheotechStudy",
+    "label": "Archeotech Study",
+    "description": "An endless pursuit of ancient technology secrets. Can be researched repeatedly.",
+    "baseCost": 15000,
+    "prerequisites": [],
+    "unlocks": [],
+    "repeatable": true
   }
 ]

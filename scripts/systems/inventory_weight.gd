@@ -2,7 +2,7 @@ extends Node
 
 const ITEM_WEIGHTS: Dictionary = {
 	"Steel": 0.5, "Wood": 0.3, "Silver": 0.3, "Gold": 0.5,
-	"Plasteel": 0.4, "Component": 0.6, "Uranium": 1.0,
+	"Plasteel": 0.4, "Components": 0.6, "Uranium": 1.0,
 	"SimpleMeal": 0.3, "FineMeal": 0.3, "Pemmican": 0.2,
 	"Medicine": 0.2, "HerbalMedicine": 0.15, "Beer": 0.4,
 	"Cloth": 0.1, "Leather": 0.15, "Weapon": 2.0,

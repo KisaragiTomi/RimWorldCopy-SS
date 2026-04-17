@@ -11,11 +11,11 @@ const DIFFICULTY_RANGE: Array = [0.3, 3.0]
 
 
 func _ready() -> void:
-	if TickManager and TickManager.has_signal("tick"):
-		TickManager.tick.connect(_on_tick)
+	if TickManager and TickManager.has_signal("long_tick"):
+		TickManager.long_tick.connect(_on_long_tick)
 
 
-func _on_tick(_tick: int) -> void:
+func _on_long_tick(_tick: int) -> void:
 	if TickManager.current_tick - _last_adapt_tick < ADAPT_INTERVAL:
 		return
 	_last_adapt_tick = TickManager.current_tick

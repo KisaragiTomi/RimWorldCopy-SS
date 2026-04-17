@@ -14,7 +14,7 @@ const SELL_EXCESS_THRESHOLD: Dictionary = {
 
 const BUY_SHORTFALL: Dictionary = {
 	"Medicine": {"min_stock": 10, "buy_amount": 5},
-	"Component": {"min_stock": 5, "buy_amount": 3},
+	"Components": {"min_stock": 5, "buy_amount": 3},
 	"Steel": {"min_stock": 50, "buy_amount": 30},
 	"RawFood": {"min_stock": 100, "buy_amount": 50},
 }

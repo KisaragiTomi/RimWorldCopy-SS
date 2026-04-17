@@ -29,13 +29,42 @@ func _on_rare_tick(_tick: int) -> void:
 	tick_power()
 
 
+func _get_building_size(b: Building) -> Vector2i:
+	var def_data: Dictionary = DefDB.get_def("ThingDef", b.def_name) if DefDB else {}
+	var sz = def_data.get("size", [1, 1])
+	if sz is Array and sz.size() >= 2:
+		return Vector2i(int(sz[0]), int(sz[1]))
+	return Vector2i(1, 1)
+
+
+func _building_occupies(b: Building, pos: Vector2i) -> bool:
+	var sz := _get_building_size(b)
+	return (pos.x >= b.grid_pos.x and pos.x < b.grid_pos.x + sz.x
+		and pos.y >= b.grid_pos.y and pos.y < b.grid_pos.y + sz.y)
+
+
+func _get_all_cells(b: Building) -> Array[Vector2i]:
+	var sz := _get_building_size(b)
+	var cells: Array[Vector2i] = []
+	for dx: int in range(sz.x):
+		for dy: int in range(sz.y):
+			cells.append(b.grid_pos + Vector2i(dx, dy))
+	return cells
+
+
 func rebuild_nets() -> void:
+	var old_stored: Dictionary = {}
+	for net: Dictionary in nets:
+		for mid: int in net.get("members", []):
+			old_stored[mid] = net.get("stored", 0.0)
+
 	nets.clear()
 	if not ThingManager:
 		return
 
 	var conduit_cells: Dictionary = {}
 	var power_buildings: Array[Building] = []
+	var all_complete: Array[Building] = []
 
 	for t: Thing in ThingManager.things:
 		if not (t is Building):
@@ -43,29 +72,42 @@ func rebuild_nets() -> void:
 		var b: Building = t as Building
 		if b.build_state != Building.BuildState.COMPLETE:
 			continue
+		all_complete.append(b)
 		if b.def_name == "PowerConduit":
 			conduit_cells[b.grid_pos] = true
 		elif b.power_draw > 0.0 or b.power_gen > 0.0:
 			power_buildings.append(b)
+		else:
+			var bdef: Dictionary = DefDB.get_def("ThingDef", b.def_name) if DefDB else {}
+			if float(bdef.get("powerCapacity", 0)) > 0.0:
+				power_buildings.append(b)
 
 	var visited_ids: Dictionary = {}
 	for b: Building in power_buildings:
 		if visited_ids.has(b.id):
 			continue
-		var net := _trace_net(b, conduit_cells, power_buildings, visited_ids)
+		var net := _trace_net(b, conduit_cells, power_buildings, all_complete, visited_ids)
 		if not net.is_empty():
+			var best_stored: float = 0.0
+			for mid: int in net.get("members", []):
+				if old_stored.has(mid):
+					best_stored = maxf(best_stored, old_stored[mid])
+			net["stored"] = minf(best_stored, net.get("capacity", 0.0))
 			nets.append(net)
 
 
-func _trace_net(start: Building, conduits: Dictionary, all_buildings: Array[Building], visited: Dictionary) -> Dictionary:
+func _trace_net(start: Building, conduits: Dictionary, power_blds: Array[Building], all_blds: Array[Building], visited: Dictionary) -> Dictionary:
 	var net_gen: float = 0.0
 	var net_draw: float = 0.0
 	var net_stored: float = 0.0
 	var net_capacity: float = 0.0
 	var members: Array[int] = []
 	var member_buildings: Array[Building] = []
+	var traversed_ids: Dictionary = {}
 
-	var queue: Array[Vector2i] = [start.grid_pos]
+	var queue: Array[Vector2i] = []
+	for c: Vector2i in _get_all_cells(start):
+		queue.append(c)
 	var cell_visited: Dictionary = {}
 
 	while queue.size() > 0:
@@ -74,8 +116,8 @@ func _trace_net(start: Building, conduits: Dictionary, all_buildings: Array[Buil
 			continue
 		cell_visited[pos] = true
 
-		for b: Building in all_buildings:
-			if b.grid_pos == pos and not visited.has(b.id):
+		for b: Building in power_blds:
+			if _building_occupies(b, pos) and not visited.has(b.id):
 				visited[b.id] = true
 				members.append(b.id)
 				member_buildings.append(b)
@@ -83,10 +125,20 @@ func _trace_net(start: Building, conduits: Dictionary, all_buildings: Array[Buil
 				net_draw += b.power_draw
 				var def_data: Dictionary = DefDB.get_def("ThingDef", b.def_name) if DefDB else {}
 				net_capacity += float(def_data.get("powerCapacity", 0))
+				for bc: Vector2i in _get_all_cells(b):
+					if not cell_visited.has(bc):
+						queue.append(bc)
+
+		for b: Building in all_blds:
+			if _building_occupies(b, pos) and not traversed_ids.has(b.id):
+				traversed_ids[b.id] = true
+				for bc: Vector2i in _get_all_cells(b):
+					if not cell_visited.has(bc):
+						queue.append(bc)
 
 		for dir: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var nb: Vector2i = pos + dir
-			if conduits.has(nb) or _has_building_at(nb, all_buildings):
+			if conduits.has(nb) or _has_any_building_at(nb, all_blds):
 				queue.append(nb)
 
 	if members.is_empty():
@@ -110,9 +162,9 @@ func _trace_net(start: Building, conduits: Dictionary, all_buildings: Array[Buil
 	}
 
 
-func _has_building_at(pos: Vector2i, buildings: Array[Building]) -> bool:
+func _has_any_building_at(pos: Vector2i, buildings: Array[Building]) -> bool:
 	for b: Building in buildings:
-		if b.grid_pos == pos:
+		if _building_occupies(b, pos):
 			return true
 	return false
 

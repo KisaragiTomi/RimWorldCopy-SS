@@ -18,10 +18,13 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 
 	var shoot_skill: int = pawn.get_skill_level("Shooting")
 
+	var reserved := _get_reserved_animal_ids()
 	var best_animal: Animal = null
 	var best_score: float = -1.0
 	for a: Animal in AnimalManager.animals:
 		if a.dead or a.tamed:
+			continue
+		if reserved.has(a.id):
 			continue
 		var threat: String = a.get_tame_difficulty()
 		if threat == "Extreme":
@@ -46,6 +49,20 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	job.target_pos = best_animal.grid_pos
 	job.meta_data["animal_id"] = best_animal.id
 	return {"job": job}
+
+
+func _get_reserved_animal_ids() -> Dictionary:
+	var reserved := {}
+	if not PawnManager:
+		return reserved
+	for p: Pawn in PawnManager.pawns:
+		if p.dead or p.downed:
+			continue
+		if p.current_job_name == "Hunt" and PawnManager._drivers.has(p.id):
+			var driver = PawnManager._drivers[p.id]
+			if driver and driver.job and driver.job.meta_data.has("animal_id"):
+				reserved[driver.job.meta_data["animal_id"]] = true
+	return reserved
 
 
 func get_huntable_count() -> int:

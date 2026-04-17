@@ -123,7 +123,7 @@ func _calc_capacity(pawn_ids: Array) -> float:
 func _item_mass(item_def: String) -> float:
 	var masses: Dictionary = {
 		"Steel": 0.5, "Wood": 0.5, "Silver": 0.01,
-		"Gold": 0.1, "Plasteel": 0.4, "Component": 0.6,
+		"Gold": 0.1, "Plasteel": 0.4, "Components": 0.6,
 		"RawFood": 0.03, "Meal": 0.44, "SimpleMeal": 0.44,
 		"Medicine": 0.5, "HerbalMed": 0.35,
 		"Cloth": 0.03, "Beer": 0.3,

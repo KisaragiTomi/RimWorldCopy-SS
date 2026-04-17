@@ -5,6 +5,7 @@ extends ThinkNode
 
 const BENCH_DEFS: PackedStringArray = [
 	"CraftingSpot", "TailoringBench", "Smithy", "MachiningTable", "FabricationBench",
+	"StonecuttersTable", "DrugLab", "BreweryVat", "AdvancedComponentAssembly",
 ]
 
 func try_issue_job(pawn: Pawn) -> Dictionary:
@@ -15,26 +16,26 @@ func try_issue_job(pawn: Pawn) -> Dictionary:
 	if not CraftingManager:
 		return {}
 
-	var entry: Dictionary = CraftingManager.get_next_unassigned()
-	if entry.is_empty():
-		return {}
+	for entry: Dictionary in CraftingManager.craft_queue:
+		if entry.get("assigned", false):
+			continue
+		var recipe_name: String = entry.get("recipe", "")
+		if not CraftingManager.can_craft(recipe_name, pawn):
+			continue
+		if not CraftingManager.has_ingredients(recipe_name):
+			continue
 
-	var recipe_name: String = entry.get("recipe", "")
-	if not CraftingManager.can_craft(recipe_name, pawn):
-		return {}
-	if not CraftingManager.has_ingredients(recipe_name):
-		return {}
+		var bench: Building = _find_bench(pawn)
+		var target_pos: Vector2i = bench.grid_pos if bench else pawn.grid_pos
 
-	var bench: Building = _find_bench(pawn)
-	var target_pos: Vector2i = bench.grid_pos if bench else pawn.grid_pos
+		entry["assigned"] = true
 
-	entry["assigned"] = true
-
-	var j := Job.new("Craft", target_pos)
-	j.meta_data["recipe"] = recipe_name
-	if bench:
-		j.target_thing_id = bench.id
-	return {"job": j, "source": self}
+		var j := Job.new("Craft", target_pos)
+		j.meta_data["recipe"] = recipe_name
+		if bench:
+			j.target_thing_id = bench.id
+		return {"job": j, "source": self}
+	return {}
 
 
 func get_available_bench_count() -> int:

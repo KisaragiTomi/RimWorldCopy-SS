@@ -45,7 +45,7 @@ func _on_toil_tick(toil_name: String) -> void:
 
 
 func _calc_chop_ticks() -> int:
-	var skill: int = pawn.get_skill("Plants") if pawn else 0
+	var skill: int = pawn.get_skill_level("Plants") if pawn else 0
 	var factor: float = clampf(1.0 - skill * 0.04, 0.4, 1.0)
 	return roundi(BASE_TICKS * factor)
 
@@ -72,7 +72,7 @@ func _finish_chop() -> void:
 	for t: Thing in ThingManager.things:
 		if t is Plant and t.grid_pos == job.target_pos:
 			var plant := t as Plant
-			var skill: int = pawn.get_skill("Plants") if pawn else 0
+			var skill: int = pawn.get_skill_level("Plants") if pawn else 0
 			var bonus: float = 1.0 + skill * 0.03
 			var yield_wood: int = roundi(plant.growth * 25.0 * bonus)
 			if yield_wood > 0:

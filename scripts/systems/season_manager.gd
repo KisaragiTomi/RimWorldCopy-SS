@@ -166,8 +166,8 @@ func get_farming_outlook() -> String:
 
 func get_seasonal_preparedness() -> String:
 	var harsh := is_harsh_season()
-	var next := get_next_season()
-	var next_data: Dictionary = SEASON_DATA.get(next, {})
+	var next_idx: int = (current_season + 1) % 4
+	var next_data: Dictionary = SEASON_DATA.get(next_idx, {})
 	if harsh:
 		return "Enduring"
 	elif next_data.get("temp_offset", 0.0) < -10.0:

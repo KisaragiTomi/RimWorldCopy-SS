@@ -26,7 +26,7 @@ func _init(cx: int = 0, cy: int = 0) -> void:
 
 
 func is_passable() -> bool:
-	if is_mountain:
+	if is_mountain or building:
 		return false
 	var tdef := DefDB.get_def("TerrainDef", terrain_def) if DefDB else {}
 	if not tdef.is_empty():
@@ -55,6 +55,7 @@ func to_dict() -> Dictionary:
 		"terrain": terrain_def,
 		"roof": roof,
 		"is_mountain": is_mountain,
+		"building": building,
 		"elevation": elevation,
 		"fertility": fertility,
 		"feature": feature,
@@ -68,6 +69,7 @@ static func from_dict(d: Dictionary) -> Cell:
 	c.terrain_def = d.get("terrain", "Soil")
 	c.roof = d.get("roof", false)
 	c.is_mountain = d.get("is_mountain", false)
+	c.building = d.get("building", false)
 	c.elevation = d.get("elevation", 0.0)
 	c.fertility = d.get("fertility", 0.0)
 	c.feature = d.get("feature", "")

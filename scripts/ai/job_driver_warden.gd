@@ -36,7 +36,7 @@ func _finish_warden() -> void:
 				if not recruited and p.get_need("Food") < 0.3:
 					_feed_prisoner(p)
 				break
-	var skill: int = pawn.get_skill("Social") if pawn else 0
+	var skill: int = pawn.get_skill_level("Social") if pawn else 0
 	pawn.gain_xp("Social", 30.0 + skill * 1.5)
 
 
